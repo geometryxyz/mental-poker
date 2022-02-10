@@ -17,11 +17,11 @@ use ark_algebra_test_templates::{
     groups::group_test,
 };
 
-// #[test]
-// fn test_projective_curve() {
-//     curve_tests::<Projective>();
-//     sw_tests::<StarkwareParameters>();
-// }
+#[test]
+fn test_projective_curve() {
+    curve_tests::<Projective>();
+    sw_tests::<StarkwareParameters>();
+}
 
 #[test]
 fn test_projective_group() {
@@ -31,9 +31,9 @@ fn test_projective_group() {
     group_test(a, b);
 }
 
-// #[test]
-// fn test_generator() {
-//     let generator = Affine::prime_subgroup_generator();
-//     assert!(generator.is_on_curve());
-//     assert!(generator.is_in_correct_subgroup_assuming_on_curve());
-// }
+#[test]
+fn test_generator() {
+    let generator = Affine::prime_subgroup_generator();
+    assert!(generator.is_on_curve());
+    assert!(generator.is_in_correct_subgroup_assuming_on_curve());
+}

@@ -3,7 +3,7 @@ use ark_ec::{
     models::{ModelParameters, SWModelParameters},
     short_weierstrass_jacobian::{GroupAffine, GroupProjective},
 };
-use ark_ff::{field_new, Zero};
+use ark_ff::{field_new};
 
 #[cfg(test)]
 mod tests;
@@ -28,17 +28,12 @@ impl SWModelParameters for StarkwareParameters {
     /// COEFF_A = 0
     const COEFF_A: Fq = field_new!(Fq, "1");
 
-    /// COEFF_B = 5
+    /// COEFF_B = 3141592653589793238462643383279502884197169399375105820974944592307816406665
     const COEFF_B: Fq = field_new!(Fq, "3141592653589793238462643383279502884197169399375105820974944592307816406665");
 
     /// AFFINE_GENERATOR_COEFFS = (G1_GENERATOR_X, G1_GENERATOR_Y)
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) =
         (G_GENERATOR_X, G_GENERATOR_Y);
-
-    #[inline(always)]
-    fn mul_by_a(_: &Self::BaseField) -> Self::BaseField {
-        Self::BaseField::zero()
-    }
 }
 
 /// G_GENERATOR_X = -1
