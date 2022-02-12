@@ -10,8 +10,8 @@ use crate::config::ProductArgumentWindow;
 
 pub fn commit<C: ProjectiveCurve>(commit_parameters: &Parameters<C>, x: &Vec<C::ScalarField>, r: &Randomness<C>) -> C::Affine {
     let serialized = x.iter().map(|x| {
-        let mut serialized = vec![0; 32];
-        x.serialize(&mut serialized[..]).unwrap();
+        let mut serialized: Vec<u8> = Vec::new();
+        x.serialize(&mut serialized).unwrap();
         serialized
     }).collect::<Vec<_>>();
 
