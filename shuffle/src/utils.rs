@@ -1,24 +1,34 @@
-use ark_crypto_primitives::{
-    commitment::{
-        pedersen::{Commitment, Randomness, Parameters}, CommitmentScheme,
-    },
-};
-
 use ark_ec::ProjectiveCurve;
-use ark_serialize::{CanonicalSerialize};
-use crate::config::ProductArgumentWindow;
+use ark_ff::PrimeField;
 
-pub fn commit<C: ProjectiveCurve>(commit_parameters: &Parameters<C>, x: &Vec<C::ScalarField>, r: &Randomness<C>) -> C::Affine {
-    let serialized = x.iter().map(|x| {
-        let mut serialized: Vec<u8> = Vec::new();
-        x.serialize(&mut serialized).unwrap();
-        serialized
-    }).collect::<Vec<_>>();
+use ark_ec::msm::VariableBaseMSM;
 
-    let serialized = serialized.into_iter().flatten().collect::<Vec<u8>>();
+pub fn commit<C: ProjectiveCurve>(bases: &Vec<C::Affine>, x: &Vec<C::ScalarField>, r: C::ScalarField) -> C {
+    let scalars = [x.as_slice(), &[r]].concat().iter().map(|x| x.into_repr()).collect::<Vec<_>>();
+    VariableBaseMSM::multi_scalar_mul(&bases[..], &scalars)
+}
 
-    let commitment = 
-        Commitment::<C, ProductArgumentWindow>::commit(commit_parameters, &serialized, r).unwrap();
+#[cfg(test)]
+mod test {
+    use starknet_curve::{Projective};
+    use starknet_curve::{Fr};
+    use super::commit;
+    use ark_std::{test_rng, UniformRand};
+    use ark_ec::ProjectiveCurve;
 
-    commitment
+    #[test]
+    fn test_commit() {
+        let rng = &mut test_rng();
+        let a1 = Fr::rand(rng);
+        let a2 = Fr::rand(rng);
+        let a3 = Fr::rand(rng);
+
+        let b1 = Projective::rand(rng);
+        let b2 = Projective::rand(rng);
+        let b3 = Projective::rand(rng);
+
+        let bases = vec![b1.into_affine(), b2.into_affine(), b3.into_affine()];
+        let x = vec![a1, a2];
+        let _cmt :Projective = commit(&bases, &x, a3);
+    }
 }

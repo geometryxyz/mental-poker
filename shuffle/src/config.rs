@@ -1,41 +1,32 @@
 use ark_ec::ProjectiveCurve;
+use rand::Rng;
 
-use ark_crypto_primitives::{
-    commitment::{
-        pedersen::{Commitment, Parameters}, CommitmentScheme
-    },
-    crh::pedersen,
-};
-use ark_std::rand::prelude::StdRng;
 
-const BITS_PER_SCALAR: usize = 256; 
-const NUM_OF_SCALARS: usize = 10;
-
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub struct ProductArgumentWindow;
-
-impl pedersen::Window for ProductArgumentWindow {
-    const WINDOW_SIZE: usize = BITS_PER_SCALAR;
-    const NUM_WINDOWS: usize = NUM_OF_SCALARS;
-}
-
+//TODO add public key
 #[derive(Clone)]
-pub struct PublicConfig<C>
-where
+pub struct PublicConfig<C, const SIZE: usize>
+where 
     C: ProjectiveCurve
 {
-    pub parameters: Parameters<C>
+    pub commit_key: Vec<C::Affine>
 }
 
-impl<C> PublicConfig<C> 
-where
+impl<C, const SIZE: usize> PublicConfig<C, SIZE>
+where 
     C: ProjectiveCurve
 {
-    pub fn new(public_randomness: &mut StdRng) -> Self {
-        let parameters = Commitment::<C, ProductArgumentWindow>::setup(public_randomness).unwrap();
-
-        PublicConfig {
-            parameters
+    pub fn new<R: Rng>(public_randomess: &mut R) -> Self {
+        Self {
+            commit_key: Self::generate_commit_key(public_randomess)
         }
+    }
+    fn generate_commit_key<R: Rng>(public_randomess: &mut R) -> Vec<C::Affine> {
+        let mut commit_key = Vec::with_capacity(SIZE + 1);
+        let mut base = C::rand(public_randomess);
+        for _ in 0..SIZE + 1 {
+            commit_key.push(base.into_affine());
+            base.double_in_place();
+        }
+        commit_key
     }
 }
