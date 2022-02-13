@@ -22,11 +22,11 @@ impl<C, const SIZE: usize> Prover<C, SIZE>
 where   
     C: ProjectiveCurve
 {
-    pub fn create_proof(commit_key: &Vec<C::Affine> ,transcript: &mut Transcript, a: Vec<C::ScalarField>) -> Proof<C, SIZE> {
+    pub fn create_proof(commit_key: &Vec<C::Affine> ,transcript: &mut Transcript, a: Vec<C::ScalarField>, a_commit: C, r_a: C::ScalarField) -> Proof<C, SIZE> {
         let mut rng = ark_std::rand::thread_rng();
 
-        let r_a = C::ScalarField::rand(&mut rng);
-        let a_commit = commit::<C>(&commit_key, &a, r_a);
+        // let r_a = C::ScalarField::rand(&mut rng);
+        // let a_commit = commit::<C>(&commit_key, &a, r_a);
         transcript.append(b"a_commit", &a_commit);
 
         // generate vector b

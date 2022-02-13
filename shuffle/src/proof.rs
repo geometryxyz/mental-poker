@@ -1,12 +1,15 @@
 use ark_ec::ProjectiveCurve;
-use ark_ff::Field;
+use ark_ff::{Field, Zero, PrimeField};
 
 use merlin::Transcript;
 use crate::transcript::TranscriptProtocol;
 use crate::product_argument::proof::{Proof as ProductArgumentProof};
+use crate::utils::commit;
 
 use crate::config::PublicConfig;
 use crate::error::Error;
+
+use std::iter;
 
 
 pub struct Proof<C, const SIZE: usize> 
@@ -43,6 +46,13 @@ impl<C, const SIZE: usize> Proof<C, SIZE>
             identity_permutation.push(i as u64);
         }
 
+        let zero = C::ScalarField::zero();
+        let z_arr = iter::repeat(-z).take(SIZE).collect();
+        let z_commit = commit::<C>(&config.commit_key, &z_arr, zero);
+
+        let d_commit = self.pi_commit.mul(y.into_repr()) + self.exp_pi_commit;
+        let d_minus_z_commit = d_commit + z_commit;
+
         let b: C::ScalarField = identity_permutation.iter()
                 .map(|i| C::ScalarField::from(*i)*y + x.pow(Self::as_limbs(*i)) - z)
                 .collect::<Vec<_>>()
@@ -51,7 +61,7 @@ impl<C, const SIZE: usize> Proof<C, SIZE>
 
         transcript.append(b"b", &b);
 
-        assert_eq!(self.product_argument_proof.verify(&config, b, &mut transcript), Ok(()));
+        assert_eq!(self.product_argument_proof.verify(&config, b, d_minus_z_commit, &mut transcript), Ok(()));
 
         Ok(())
     }

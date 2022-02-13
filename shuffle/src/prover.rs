@@ -76,7 +76,10 @@ where
             *pi*y + x_pi - z
         }).collect::<Vec<_>>();
 
-        let prod_arg_proof: ProductArgumentProof<C, SIZE> = ProductArgumentProver::create_proof(&self.public_config.commit_key, &mut transcript, a);
+        let a_rand = y*r + r_x;
+        let a_commit = commit::<C>(&self.public_config.commit_key, &a, a_rand);
+
+        let prod_arg_proof: ProductArgumentProof<C, SIZE> = ProductArgumentProver::create_proof(&self.public_config.commit_key, &mut transcript, a, a_commit, a_rand);
         Proof {
             pi_commit,
             exp_pi_commit,

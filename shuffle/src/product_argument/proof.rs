@@ -29,6 +29,7 @@ impl<C, const SIZE: usize> Proof<C, SIZE>
     pub fn verify(&self, 
         config: &PublicConfig<C, SIZE>, 
         b: C::ScalarField,
+        c_d_minus_z: C,
         transcript: &mut Transcript,
     ) -> Result<(), Error> {
         transcript.append(b"a_commit", &self.a_commit);
@@ -45,7 +46,7 @@ impl<C, const SIZE: usize> Proof<C, SIZE>
         assert_eq!(self.b_blinded[SIZE - 1], x * b);
 
         let a_blinded_commit = commit::<C>(&config.commit_key, &self.a_blinded, self.r_blinded);
-        let ca_x_cd = self.a_commit.mul(x.into_repr()) + self.d_commit;
+        let ca_x_cd = c_d_minus_z.mul(x.into_repr()) + self.d_commit;
 
         if ca_x_cd != a_blinded_commit {
             return Err(Error::ProductArgumentVerificationError)
