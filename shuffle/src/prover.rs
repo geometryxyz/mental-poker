@@ -117,9 +117,9 @@ mod test {
     fn initial_proof_creation() {
         let mut rng = thread_rng();
 
-        let config = PublicConfig::<Projective, 3>::new(&mut rng);
+        let config = PublicConfig::<Projective, 1000>::new(&mut rng);
 
-        let prover = Prover::<Projective, 3>::new(config.clone(), b"shuffle");
+        let prover = Prover::<Projective, 1000>::new(config.clone(), b"shuffle");
         let proof = prover.create_proof();
 
         let mut transcript = Transcript::new(b"shuffle");
