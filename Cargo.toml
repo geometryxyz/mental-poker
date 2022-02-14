@@ -2,5 +2,6 @@
 
 members = [
     "starknet_curve",
-    "shuffle"
+    "shuffle",
+    "verifiable_threshold_masking_protocol"
 ]
