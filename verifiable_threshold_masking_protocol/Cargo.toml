@@ -12,3 +12,5 @@ rand = "0.8.4"
 ark-crypto-primitives = "0.3.0"
 starknet_curve = { path = "../starknet_curve" }
 ark-std = { version = "0.3.0", features = ["std"] }
+merlin = "3.0.0"
+ark-serialize = "0.3.0"
