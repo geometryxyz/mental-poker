@@ -2,38 +2,41 @@ pub mod error;
 pub mod discrete_log_vtmp;
 
 
+
 use ark_std::rand::Rng;
 use ark_crypto_primitives::encryption::AsymmetricEncryptionScheme;
 use error::Error;
 
 
-trait HomomorphicScheme: AsymmetricEncryptionScheme {
-    type ScalarField;
+// trait HomomorphicScheme: AsymmetricEncryptionScheme {
+//     type ScalarField;
 
-    fn add(
-        ciphertext: &Self::Ciphertext,
-        other_ciphertext: &Self::Ciphertext
-    ) -> Result<Self::Ciphertext, Error>;
+//     fn add(
+//         ciphertext: &Self::Ciphertext,
+//         other_ciphertext: &Self::Ciphertext
+//     ) -> Result<Self::Ciphertext, Error>;
 
-    fn add_in_place(
-        ciphertext: &mut Self::Ciphertext,
-        other_ciphertext: &Self::Ciphertext
-    ) -> Result<(), Error>;
+//     fn add_in_place(
+//         ciphertext: &mut Self::Ciphertext,
+//         other_ciphertext: &Self::Ciphertext
+//     ) -> Result<(), Error>;
 
-    fn mul(
-        ciphertext: &Self::Ciphertext,
-        scalar: &Self::ScalarField
-    ) -> Result<Self::Ciphertext, Error>; 
+//     fn mul(
+//         ciphertext: &Self::Ciphertext,
+//         scalar: &Self::ScalarField
+//     ) -> Result<Self::Ciphertext, Error>; 
 
-    fn mul_in_place(
-        ciphertext: &mut Self::Ciphertext,
-        scalar: &Self::ScalarField
-    ) -> Result<(), Error>; 
-}
+//     fn mul_in_place(
+//         ciphertext: &mut Self::Ciphertext,
+//         scalar: &Self::ScalarField
+//     ) -> Result<(), Error>; 
+// }
 
 
-trait VerifiableThresholdMaskingProtocol<EncryptionScheme: HomomorphicScheme> {
+trait VerifiableThresholdMaskingProtocol<EncryptionScheme: AsymmetricEncryptionScheme> {
     type DecryptionKey;
+    type ScalarField;
+    type Ciphertext;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<EncryptionScheme::Parameters, Error>;
     
@@ -75,4 +78,25 @@ trait VerifiableThresholdMaskingProtocol<EncryptionScheme: HomomorphicScheme> {
         masking_factors: &Vec<EncryptionScheme::Randomness>,
         permutation: &Vec<usize>
     ) -> Result<Vec<EncryptionScheme::Ciphertext>, Error>;
+
+    //CONSIDER MOVING IT TO DIFFERENT TRAIT OR OVERLOADING OPERATORS
+    fn add(
+        ciphertext: &EncryptionScheme::Ciphertext,
+        other_ciphertext: &EncryptionScheme::Ciphertext
+    ) -> Result<EncryptionScheme::Ciphertext, Error>;
+
+    fn add_in_place(
+        ciphertext: &mut EncryptionScheme::Ciphertext,
+        other_ciphertext: &EncryptionScheme::Ciphertext
+    ) -> Result<(), Error>;
+
+    fn mul(
+        ciphertext: &EncryptionScheme::Ciphertext,
+        scalar: &Self::ScalarField
+    ) -> Result<EncryptionScheme::Ciphertext, Error>; 
+
+    fn mul_in_place(
+        ciphertext: &mut EncryptionScheme::Ciphertext,
+        scalar: &Self::ScalarField
+    ) -> Result<(), Error>; 
 }

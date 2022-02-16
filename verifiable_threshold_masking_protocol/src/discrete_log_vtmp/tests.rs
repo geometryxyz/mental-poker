@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod test {
-    use crate::discrete_log_vtmp::{DiscreteLogVTMF, VerifiableThresholdMaskingProtocol, HomomorphicScheme};
+    use crate::discrete_log_vtmp::{DiscreteLogVTMF, VerifiableThresholdMaskingProtocol, Ciphertext};
     use ark_crypto_primitives::encryption::elgamal::{Randomness};
-    use starknet_curve::{Projective, Fr};
-    use ark_std::{test_rng, UniformRand};
+    use starknet_curve::{Projective, Fr, Affine};
+    use ark_std::{test_rng, UniformRand, Zero};
     use ark_ec::{ProjectiveCurve, AffineCurve};
     use ark_ff::{One};
     use rand::{thread_rng, seq::SliceRandom};
@@ -55,38 +55,40 @@ mod test {
     }
 
 
-    // #[test]
-    // fn mask_shuffle_test() {
-    //     let number_of_cards = 52;
-    //     let rng = &mut test_rng();
-    //     let rng1 = &mut thread_rng();
+    #[test]
+    fn mask_shuffle_test() {
+        let number_of_cards = 52;
+        let rng = &mut test_rng();
+        let rng1 = &mut thread_rng();
 
-    //     let parameters = DiscreteLogVTMF::setup(rng).unwrap();
+        let parameters = DiscreteLogVTMF::setup(rng).unwrap();
 
-    //     let (master_pk, _) = DiscreteLogVTMF::<Projective>::keygen(&parameters, rng1).unwrap();
+        let (master_pk, _) = DiscreteLogVTMF::<Projective>::keygen(&parameters, rng1).unwrap();
 
-    //     let mut card_rng = thread_rng();
-    //     let deck = (0..number_of_cards).collect::<Vec<usize>>().iter().map(|x| {
-    //         let one = Fr::one();
-    //         DiscreteLogVTMF::<Projective>::mask(&parameters, &master_pk, &Projective::rand(&mut card_rng).into(), &Randomness(one)).unwrap()
-    //     }).collect::<Vec<_>>();
+        let mut card_rng = thread_rng();
+        let deck = (0..number_of_cards).collect::<Vec<usize>>().iter().map(|x| {
+            let one = Fr::one();
+            DiscreteLogVTMF::<Projective>::mask(&parameters, &master_pk, &Projective::rand(&mut card_rng).into(), &Randomness(one)).unwrap()
+        }).collect::<Vec<_>>();
 
-    //     let mut masking_rng = thread_rng();
-    //     let masking_factors = (0..number_of_cards).collect::<Vec<usize>>().iter().map(|x| {
-    //         let masking_factor = Fr::rand(&mut masking_rng);
-    //         Randomness(masking_factor)
-    //     }).collect::<Vec<_>>();
+        let mut masking_rng = thread_rng();
+        let masking_factors = (0..number_of_cards).collect::<Vec<usize>>().iter().map(|x| {
+            let masking_factor = Fr::rand(&mut masking_rng);
+            Randomness(masking_factor)
+        }).collect::<Vec<_>>();
 
-    //     let permutation = generate_permutation(number_of_cards);
+        let permutation = generate_permutation(number_of_cards);
 
-    //     let shuffled_deck = DiscreteLogVTMF::<Projective>::mask_shuffle(&parameters, &master_pk, &deck, &masking_factors, &permutation);
+        let shuffled_deck = DiscreteLogVTMF::<Projective>::mask_shuffle(&parameters, &master_pk, &deck, &masking_factors, &permutation).unwrap();
 
-    //     let sum = ElGamal::add(deck[0], deck[1]);
+        let sum_of_randomness: Option<Randomness<Projective>> = masking_factors.into_iter().reduce(|a, b| { Randomness(a.0 + b.0) });
+        let sum_of_deck: Option<Ciphertext<Projective>> = deck.into_iter().reduce(|a, b| { DiscreteLogVTMF::<Projective>::add(&a, &b).unwrap() });
+        let sum_of_shuffled: Option<Ciphertext<Projective>> = shuffled_deck.into_iter().reduce(|a, b| { DiscreteLogVTMF::<Projective>::add(&a, &b).unwrap() });
 
-    //     let sum_of_randomness: Option<Randomness<Projective>> = masking_factors.into_iter().reduce(|a, b| { Randomness(a.0 + b.0) });
-    //     let sum_of_deck: Option<DiscreteLogVTMF::<Projective>::Ciphertext> = deck.into_iter().reduce(|a, b| { ElGamal::<Projective>::add(a, b) });
-    //     // let sum_of_shuffled: Option<DiscreteLogVTMF::<Projective>::Ciphertext> = deck.into_iter().reduce(|a, b| { DiscreteLogVTMF::<Projective>::add(a, b) });
+        let global_masking = DiscreteLogVTMF::<Projective>::mask(&parameters, &master_pk, &Affine::zero(), &sum_of_randomness.unwrap()).unwrap();
 
-        
-    // }
+        // E(I, sum_of_randomness) + sum_of_deck should be equal to sum_of_shuffled_deck 
+        let want = DiscreteLogVTMF::<Projective>::add(&sum_of_deck.unwrap(), &global_masking).unwrap();
+        assert_eq!(want, sum_of_shuffled.unwrap());
+    }
 }

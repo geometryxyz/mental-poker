@@ -3,7 +3,7 @@ use crate::*;
 pub mod tests;
 
 use ark_ec::{ProjectiveCurve, AffineCurve};
-use ark_crypto_primitives::encryption::{AsymmetricEncryptionScheme, elgamal::*};
+use ark_crypto_primitives::encryption::{AsymmetricEncryptionScheme, elgamal::*, elgamal::{Ciphertext as ElGamalCipher}};
 use ark_ff::{PrimeField};
 use ark_std::Zero;
 use ark_std::rand::Rng;
@@ -15,45 +15,13 @@ pub struct DiscreteLogVTMF<C: ProjectiveCurve>  {
     _group: PhantomData<C>
 }
 
-
-impl<C: ProjectiveCurve> HomomorphicScheme for ElGamal<C> {
-    type ScalarField = C::ScalarField;
-
-    fn add(ciphertext: &Self::Ciphertext, other_ciphertext: &Self::Ciphertext) -> Result<Self::Ciphertext, Error> {
-        let ciphertext = (ciphertext.0 + other_ciphertext.0, ciphertext.1 + other_ciphertext.1);
-
-        Ok(ciphertext)
-    }
-
-    fn add_in_place(ciphertext: &mut Self::Ciphertext, other_ciphertext: &Self::Ciphertext) -> Result<(), Error> {
-        ciphertext.0 = ciphertext.0 + other_ciphertext.0;
-        ciphertext.1 = ciphertext.1 + other_ciphertext.1;
-
-        Ok(())
-    }
-
-    fn mul(
-        ciphertext: &Self::Ciphertext,
-        scalar: &Self::ScalarField
-    ) -> Result<Self::Ciphertext, Error> {
-        let multiplied = (ciphertext.0.mul(scalar.into_repr()).into_affine(), ciphertext.0.mul(scalar.into_repr()).into_affine());
-
-        Ok(multiplied)
-    }
-
-    fn mul_in_place(
-        ciphertext: &mut Self::Ciphertext,
-        scalar: &Self::ScalarField
-    ) -> Result<(), Error> {
-        ciphertext.0 = ciphertext.0.mul(scalar.into_repr()).into_affine();
-        ciphertext.1 = ciphertext.0.mul(scalar.into_repr()).into_affine();
-
-        Ok(())
-    }
-}
+pub type Ciphertext<C> = ElGamalCipher<C>;
 
 impl<C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>> for DiscreteLogVTMF<C> {
     type DecryptionKey = C;
+    type ScalarField = C::ScalarField;
+    type Ciphertext = Ciphertext<C>;
+    
     fn setup<R: Rng>(rng: &mut R) -> Result<Parameters<C>, Error> {
         match ElGamal::<C>::setup(rng) {
             Ok(parameters) => Ok(parameters),
@@ -75,7 +43,7 @@ impl<C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>> for Disc
         true
     }
 
-    fn mask(pp: &Parameters<C>, shared_key: &PublicKey<C>, message: &Plaintext<C>, r: &Randomness<C>) -> Result<Ciphertext<C>, Error> {
+    fn mask(pp: &Parameters<C>, shared_key: &PublicKey<C>, message: &Plaintext<C>, r: &Randomness<C>) -> Result<Self::Ciphertext, Error> {
         match ElGamal::<C>::encrypt(pp, shared_key, message, r) {
             Ok(ciphertext) => Ok(ciphertext),
             Err(_) => Err(Error::MaskingError),
@@ -102,7 +70,7 @@ impl<C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>> for Disc
         alpha: &Randomness<C>,
     ) -> Result<Ciphertext<C>, Error> {
         let masking_point = Self::mask(pp, shared_key, &C::Affine::zero(), alpha).unwrap();
-        let output_point = ElGamal::<C>::add(ciphertext, &masking_point).unwrap();
+        let output_point = Self::add(ciphertext, &masking_point).unwrap();
         
         Ok(output_point)
     }
@@ -123,5 +91,37 @@ impl<C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>> for Disc
         }).collect::<Vec<_>>();
 
         Ok(permuted_deck)
+    }
+
+    fn add(ciphertext: &Ciphertext<C>, other_ciphertext: &Ciphertext<C>) -> Result<Ciphertext<C>, Error> {
+        let ciphertext = (ciphertext.0 + other_ciphertext.0, ciphertext.1 + other_ciphertext.1);
+
+        Ok(ciphertext)
+    }
+
+    fn add_in_place(ciphertext: &mut Ciphertext<C>, other_ciphertext: &Ciphertext<C>) -> Result<(), Error> {
+        ciphertext.0 = ciphertext.0 + other_ciphertext.0;
+        ciphertext.1 = ciphertext.1 + other_ciphertext.1;
+
+        Ok(())
+    }
+
+    fn mul(
+        ciphertext: &Ciphertext<C>,
+        scalar: &Self::ScalarField
+    ) -> Result<Ciphertext<C>, Error> {
+        let multiplied = (ciphertext.0.mul(scalar.into_repr()).into_affine(), ciphertext.0.mul(scalar.into_repr()).into_affine());
+
+        Ok(multiplied)
+    }
+
+    fn mul_in_place(
+        ciphertext: &mut Ciphertext<C>,
+        scalar: &Self::ScalarField
+    ) -> Result<(), Error> {
+        ciphertext.0 = ciphertext.0.mul(scalar.into_repr()).into_affine();
+        ciphertext.1 = ciphertext.0.mul(scalar.into_repr()).into_affine();
+
+        Ok(())
     }
 }
