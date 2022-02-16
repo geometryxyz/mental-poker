@@ -4,11 +4,9 @@ mod test {
     use ark_crypto_primitives::encryption::elgamal::{Randomness};
     use starknet_curve::{Projective, Fr, Affine};
     use ark_std::{test_rng, UniformRand, Zero};
-    use ark_ec::{ProjectiveCurve, AffineCurve};
     use ark_ff::{One};
     use rand::{thread_rng, seq::SliceRandom};
     use std::iter::Iterator;
-    use ark_crypto_primitives::encryption::{AsymmetricEncryptionScheme, elgamal::*};
 
 
     fn generate_permutation(length: usize) -> Vec<usize> {
