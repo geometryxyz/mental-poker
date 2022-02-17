@@ -1,42 +1,21 @@
 pub mod error;
 pub mod discrete_log_vtmp;
 pub mod chaum_pedersen_dl_equality;
+pub mod transcript;
+pub mod schnorr_identification;
 
 use ark_crypto_primitives::encryption::AsymmetricEncryptionScheme;
 use ark_std::rand::Rng;
 use error::Error;
-
-
-// trait HomomorphicScheme: AsymmetricEncryptionScheme {
-//     type ScalarField;
-
-//     fn add(
-//         ciphertext: &Self::Ciphertext,
-//         other_ciphertext: &Self::Ciphertext
-//     ) -> Result<Self::Ciphertext, Error>;
-
-//     fn add_in_place(
-//         ciphertext: &mut Self::Ciphertext,
-//         other_ciphertext: &Self::Ciphertext
-//     ) -> Result<(), Error>;
-
-//     fn mul(
-//         ciphertext: &Self::Ciphertext,
-//         scalar: &Self::ScalarField
-//     ) -> Result<Self::Ciphertext, Error>; 
-
-//     fn mul_in_place(
-//         ciphertext: &mut Self::Ciphertext,
-//         scalar: &Self::ScalarField
-//     ) -> Result<(), Error>; 
-// }
+use std::ops::{Add, Mul};
 
 
 trait VerifiableThresholdMaskingProtocol<EncryptionScheme: AsymmetricEncryptionScheme> {
     type DecryptionKey;
     type ScalarField;
-    type Ciphertext;
-    type DLProof;
+    type Ciphertext: Add<Self::Ciphertext> + Mul<Self::ScalarField>;
+    type DLEqualityProof;
+    type PrivateKeyProof;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<EncryptionScheme::Parameters, Error>;
     
@@ -45,7 +24,10 @@ trait VerifiableThresholdMaskingProtocol<EncryptionScheme: AsymmetricEncryptionS
         rng: &mut R
     ) -> Result<(EncryptionScheme::PublicKey, EncryptionScheme::SecretKey), Error>;
     
-    fn verify_key_ownership() -> bool;
+    fn verified_keygen<R: Rng>(
+        pp: &EncryptionScheme::Parameters,
+        rng: &mut R
+    ) -> Result<(EncryptionScheme::PublicKey, EncryptionScheme::SecretKey, Self::PrivateKeyProof), Error>;
 
     fn mask(
         pp: &EncryptionScheme::Parameters,
@@ -59,7 +41,7 @@ trait VerifiableThresholdMaskingProtocol<EncryptionScheme: AsymmetricEncryptionS
         shared_key: &EncryptionScheme::PublicKey,
         message: &EncryptionScheme::Plaintext,
         r: &EncryptionScheme::Randomness
-    ) -> Result<(Self::Ciphertext, Self::DLProof), Error>;
+    ) -> Result<(Self::Ciphertext, Self::DLEqualityProof), Error>;
 
     fn compute_decryption_key(
         sk: &EncryptionScheme::SecretKey,
@@ -83,7 +65,7 @@ trait VerifiableThresholdMaskingProtocol<EncryptionScheme: AsymmetricEncryptionS
         shared_key: &EncryptionScheme::PublicKey,
         ciphertext: &Self::Ciphertext,
         alpha: &EncryptionScheme::Randomness
-    ) -> Result<(Self::Ciphertext, Self::DLProof), Error>;
+    ) -> Result<(Self::Ciphertext, Self::DLEqualityProof), Error>;
     
     fn mask_shuffle(
         pp: &EncryptionScheme::Parameters,
@@ -92,25 +74,4 @@ trait VerifiableThresholdMaskingProtocol<EncryptionScheme: AsymmetricEncryptionS
         masking_factors: &Vec<EncryptionScheme::Randomness>,
         permutation: &Vec<usize>
     ) -> Result<Vec<Self::Ciphertext>, Error>;
-
-    //CONSIDER MOVING IT TO DIFFERENT TRAIT OR OVERLOADING OPERATORS
-    fn add(
-        ciphertext: &Self::Ciphertext,
-        other_ciphertext: &Self::Ciphertext
-    ) -> Result<Self::Ciphertext, Error>;
-
-    fn add_in_place(
-        ciphertext: &mut Self::Ciphertext,
-        other_ciphertext: &Self::Ciphertext
-    ) -> Result<(), Error>;
-
-    fn mul(
-        ciphertext: &Self::Ciphertext,
-        scalar: &Self::ScalarField
-    ) -> Result<Self::Ciphertext, Error>; 
-
-    fn mul_in_place(
-        ciphertext: &mut Self::Ciphertext,
-        scalar: &Self::ScalarField
-    ) -> Result<(), Error>; 
 }

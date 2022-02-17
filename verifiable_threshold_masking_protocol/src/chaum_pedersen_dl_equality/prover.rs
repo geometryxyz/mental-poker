@@ -1,4 +1,5 @@
 use crate::chaum_pedersen_dl_equality::{Parameters, transcript::TranscriptProtocol, proof::Proof};
+use crate::discrete_log_vtmp::ElgamalCipher;
 
 use ark_ec::{ProjectiveCurve, AffineCurve};
 use ark_ff::{PrimeField};
@@ -21,7 +22,7 @@ impl<C> Prover<C>
 where   
     C: ProjectiveCurve
 {
-    pub fn create_proof(parameters: &Parameters<C>, statement: &(C::Affine, C::Affine), secret: C::ScalarField) -> Proof<C> {
+    pub fn create_proof(parameters: &Parameters<C>, statement: &ElgamalCipher<C>, secret: C::ScalarField) -> Proof<C> {
         let mut transcript = Transcript::new(b"chaum_pedersen");
         transcript.append(b"g", &parameters.g);
         transcript.append(b"h", &parameters.h);

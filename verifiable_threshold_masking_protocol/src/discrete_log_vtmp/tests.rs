@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod test {
-    use crate::discrete_log_vtmp::{DiscreteLogVTMF, VerifiableThresholdMaskingProtocol, Ciphertext};
+    use crate::discrete_log_vtmp::{DiscreteLogVTMF, VerifiableThresholdMaskingProtocol, ElgamalCipher};
     use crate::chaum_pedersen_dl_equality::Parameters;
 
     use ark_crypto_primitives::encryption::elgamal::{Randomness};
@@ -74,13 +74,13 @@ mod test {
         let (master_pk, _) = DiscreteLogVTMF::<Projective>::keygen(&parameters, rng1).unwrap();
 
         let mut card_rng = thread_rng();
-        let deck = (0..number_of_cards).collect::<Vec<usize>>().iter().map(|x| {
+        let deck = (0..number_of_cards).collect::<Vec<usize>>().iter().map(|_| {
             let one = Fr::one();
             DiscreteLogVTMF::<Projective>::mask(&parameters, &master_pk, &Projective::rand(&mut card_rng).into(), &Randomness(one)).unwrap()
         }).collect::<Vec<_>>();
 
         let mut masking_rng = thread_rng();
-        let masking_factors = (0..number_of_cards).collect::<Vec<usize>>().iter().map(|x| {
+        let masking_factors = (0..number_of_cards).collect::<Vec<usize>>().iter().map(|_| {
             let masking_factor = Fr::rand(&mut masking_rng);
             Randomness(masking_factor)
         }).collect::<Vec<_>>();
@@ -90,13 +90,13 @@ mod test {
         let shuffled_deck = DiscreteLogVTMF::<Projective>::mask_shuffle(&parameters, &master_pk, &deck, &masking_factors, &permutation).unwrap();
 
         let sum_of_randomness: Option<Randomness<Projective>> = masking_factors.into_iter().reduce(|a, b| { Randomness(a.0 + b.0) });
-        let sum_of_deck: Option<Ciphertext<Projective>> = deck.into_iter().reduce(|a, b| { DiscreteLogVTMF::<Projective>::add(&a, &b).unwrap() });
-        let sum_of_shuffled: Option<Ciphertext<Projective>> = shuffled_deck.into_iter().reduce(|a, b| { DiscreteLogVTMF::<Projective>::add(&a, &b).unwrap() });
+        let sum_of_deck: Option<ElgamalCipher<Projective>> = deck.into_iter().reduce(|a, b| { a + b });
+        let sum_of_shuffled: Option<ElgamalCipher<Projective>> = shuffled_deck.into_iter().reduce(|a, b| { a + b });
 
         let global_masking = DiscreteLogVTMF::<Projective>::mask(&parameters, &master_pk, &Affine::zero(), &sum_of_randomness.unwrap()).unwrap();
 
         // E(I, sum_of_randomness) + sum_of_deck should be equal to sum_of_shuffled_deck 
-        let want = DiscreteLogVTMF::<Projective>::add(&sum_of_deck.unwrap(), &global_masking).unwrap();
+        let want = sum_of_deck.unwrap() + global_masking;
         assert_eq!(want, sum_of_shuffled.unwrap());
     }
 
@@ -124,7 +124,7 @@ mod test {
             h: pk1,
         };
 
-        assert_eq!(proof.verify(&proof_parameters, &statement), Ok(()));
+        assert_eq!(proof.verify(&proof_parameters, &statement.into()), Ok(()));
     }
 
     #[test]
@@ -148,8 +148,9 @@ mod test {
 
         // Compute statement on verifier side
         let neg_one = -Fr::one();
-        let negative_cipher = DiscreteLogVTMF::<Projective>::mul(&cipher, &neg_one).unwrap();
-        let statement = DiscreteLogVTMF::<Projective>::add(&remasked, &negative_cipher).unwrap();
+        // let negative_cipher = DiscreteLogVTMF::<Projective>::mul(&cipher, &neg_one).unwrap();
+        let negative_cipher =  cipher * neg_one;
+        let statement = remasked + negative_cipher;
 
         // Compute parameters on verifier side
         let proof_parameters = Parameters {

@@ -3,25 +3,55 @@ use crate::*;
 pub mod tests;
 
 use ark_ec::{ProjectiveCurve, AffineCurve};
-use ark_crypto_primitives::encryption::{AsymmetricEncryptionScheme, elgamal::*, elgamal::{Ciphertext as ElGamalCipher}};
+use ark_crypto_primitives::encryption::{AsymmetricEncryptionScheme, elgamal::*, elgamal::{Ciphertext}};
 use ark_ff::{PrimeField};
 use ark_std::{Zero, One};
 use ark_std::rand::Rng;
 use std::marker::PhantomData;
 use std::iter::Iterator;
-use chaum_pedersen_dl_equality::{Parameters as ChaumPedersenParameters, proof::Proof, prover::Prover};
+use chaum_pedersen_dl_equality::{Parameters as ChaumPedersenParameters, proof::Proof as ChaumPedersenProof, prover::Prover as ChaumPedersenProver};
+use schnorr_identification::{Parameters as SchnorrParameters, proof::Proof as SchnorrProof, prover::Prover as SchnorrProver};
+
 
 pub struct DiscreteLogVTMF<C: ProjectiveCurve>  {
     _group: PhantomData<C>
 }
 
-pub type Ciphertext<C> = ElGamalCipher<C>;
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct ElgamalCipher<C: ProjectiveCurve>(
+    pub C::Affine,
+    pub C::Affine,
+);
+
+impl<C: ProjectiveCurve> From<Ciphertext<C>> for ElgamalCipher<C> {
+    fn from(ciphertext: Ciphertext<C>) -> Self {
+        ElgamalCipher::<C>(ciphertext.0, ciphertext.1)
+    }
+}
+
+impl<C: ProjectiveCurve> std::ops::Add<ElgamalCipher<C>> for ElgamalCipher<C> {
+    type Output = ElgamalCipher<C>;
+
+    fn add(self, _rhs: ElgamalCipher<C>) -> ElgamalCipher<C> {
+        ElgamalCipher::<C>(self.0 + _rhs.0, self.1 + _rhs.1)
+    }
+}
+
+impl<C: ProjectiveCurve> std::ops::Mul<C::ScalarField> for ElgamalCipher<C> {
+    type Output = ElgamalCipher<C>;
+
+    fn mul(self, scalar: C::ScalarField) -> ElgamalCipher<C> {
+        ElgamalCipher::<C>(self.0.mul(scalar).into_affine(), self.1.mul(scalar).into_affine())
+    }
+}
+
 
 impl<C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>> for DiscreteLogVTMF<C> {
     type DecryptionKey = C;
     type ScalarField = C::ScalarField;
-    type Ciphertext = Ciphertext<C>;
-    type DLProof = Proof<C>;
+    type Ciphertext = ElgamalCipher<C>;
+    type DLEqualityProof = ChaumPedersenProof<C>;
+    type PrivateKeyProof = SchnorrProof<C>;
     
     fn setup<R: Rng>(rng: &mut R) -> Result<Parameters<C>, Error> {
         match ElGamal::<C>::setup(rng) {
@@ -40,13 +70,29 @@ impl<C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>> for Disc
         }   
     }
 
-    fn verify_key_ownership() -> bool {
-        true
+    fn verified_keygen<R: Rng>(
+        pp: &Parameters<C>,
+        rng: &mut R
+    ) -> Result<(PublicKey<C>, SecretKey<C>, Self::PrivateKeyProof), Error> {
+        match ElGamal::<C>::keygen(pp, rng) {
+            Ok(parameters) => {
+                let (pk, sk) = parameters;
+
+                let params = SchnorrParameters {
+                    generator: pp.generator
+                };
+
+                let proof = SchnorrProver::<C>::create_proof(&params, &pk, sk.0);
+                
+                Ok((pk, sk, proof))
+            },
+            Err(_) => Err(Error::KeyGenError),
+        }   
     }
 
     fn mask(pp: &Parameters<C>, shared_key: &PublicKey<C>, message: &Plaintext<C>, r: &Randomness<C>) -> Result<Self::Ciphertext, Error> {
         match ElGamal::<C>::encrypt(pp, shared_key, message, r) {
-            Ok(ciphertext) => Ok(ciphertext),
+            Ok(ciphertext) => Ok(ciphertext.into()),
             Err(_) => Err(Error::MaskingError),
         } 
     }
@@ -56,7 +102,7 @@ impl<C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>> for Disc
         shared_key: &PublicKey<C>,
         message: &Plaintext<C>,
         r: &Randomness<C>
-    ) -> Result<(Self::Ciphertext, Self::DLProof), Error> {
+    ) -> Result<(Self::Ciphertext, Self::DLEqualityProof), Error> {
         let ciphertext = Self::mask(&pp, &shared_key, &message, &r).unwrap();
 
         let proof_parameters = ChaumPedersenParameters {
@@ -65,7 +111,7 @@ impl<C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>> for Disc
         };
         let negative_message = message.mul(-C::ScalarField::one());
         let statement = (ciphertext.0, negative_message.add_mixed(&ciphertext.1).into_affine());
-        let proof = Prover::<C>::create_proof(&proof_parameters, &statement, r.0);
+        let proof = ChaumPedersenProver::<C>::create_proof(&proof_parameters, &statement.into(), r.0);
         Ok((ciphertext, proof))    
     }
 
@@ -89,7 +135,7 @@ impl<C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>> for Disc
         alpha: &Randomness<C>,
     ) -> Result<Self::Ciphertext, Error> {
         let masking_point = Self::mask(pp, shared_key, &C::Affine::zero(), alpha).unwrap();
-        let remasked_cipher = Self::add(ciphertext, &masking_point).unwrap();
+        let remasked_cipher = *ciphertext + masking_point;
         
         Ok(remasked_cipher)
     }
@@ -99,20 +145,20 @@ impl<C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>> for Disc
         shared_key: &PublicKey<C>,
         ciphertext: &Self::Ciphertext,
         alpha: &Randomness<C>
-    ) -> Result<(Self::Ciphertext, Self::DLProof), Error> {
+    ) -> Result<(Self::Ciphertext, Self::DLEqualityProof), Error> {
         
         let masking_point = Self::mask(pp, shared_key, &C::Affine::zero(), alpha).unwrap();
-        let remasked_cipher = Self::add(ciphertext, &masking_point).unwrap();
+        let remasked_cipher = *ciphertext + masking_point;
 
         let proof_parameters = ChaumPedersenParameters {
             g: pp.generator,
             h: *shared_key,
         };
         let neg_one = -C::ScalarField::one();
-        let negative_cipher = Self::mul(&ciphertext, &neg_one).unwrap();
-        let statement = Self::add(&remasked_cipher, &negative_cipher).unwrap();
+        let negative_cipher = *ciphertext * neg_one;
+        let statement = remasked_cipher + negative_cipher;
 
-        let proof = Prover::<C>::create_proof(&proof_parameters, &statement, alpha.0);
+        let proof = ChaumPedersenProver::<C>::create_proof(&proof_parameters, &statement, alpha.0);
         
         Ok((remasked_cipher, proof))   
     }
@@ -134,38 +180,4 @@ impl<C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>> for Disc
 
         Ok(permuted_deck)
     }
-
-    fn add(ciphertext: &Self::Ciphertext, other_ciphertext: &Self::Ciphertext) -> Result<Self::Ciphertext, Error> {
-        let ciphertext = (ciphertext.0 + other_ciphertext.0, ciphertext.1 + other_ciphertext.1);
-
-        Ok(ciphertext)
-    }
-
-    fn add_in_place(ciphertext: &mut Self::Ciphertext, other_ciphertext: &Self::Ciphertext) -> Result<(), Error> {
-        ciphertext.0 = ciphertext.0 + other_ciphertext.0;
-        ciphertext.1 = ciphertext.1 + other_ciphertext.1;
-
-        Ok(())
-    }
-
-    fn mul(
-        ciphertext: &Self::Ciphertext,
-        scalar: &Self::ScalarField
-    ) -> Result<Self::Ciphertext, Error> {
-        let multiplied = (ciphertext.0.mul(scalar.into_repr()).into_affine(), ciphertext.1.mul(scalar.into_repr()).into_affine());
-
-        Ok(multiplied)
-    }
-
-    fn mul_in_place(
-        ciphertext: &mut Self::Ciphertext,
-        scalar: &Self::ScalarField
-    ) -> Result<(), Error> {
-        ciphertext.0 = ciphertext.0.mul(scalar.into_repr()).into_affine();
-        ciphertext.1 = ciphertext.1.mul(scalar.into_repr()).into_affine();
-
-        Ok(())
-    }
-
-
 }
