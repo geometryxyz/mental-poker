@@ -23,6 +23,16 @@ pub struct ElgamalCipher<C: ProjectiveCurve>(
     pub C::Affine,
 );
 
+impl<C: ProjectiveCurve> Zero for ElgamalCipher<C> {
+    fn zero() -> ElgamalCipher<C> {
+        ElgamalCipher::<C>(C::Affine::zero(), C::Affine::zero())
+    }
+
+    fn is_zero(&self) -> bool {
+        *self == ElgamalCipher::<C>(C::Affine::zero(), C::Affine::zero())
+    }
+}
+
 impl<C: ProjectiveCurve> From<Ciphertext<C>> for ElgamalCipher<C> {
     fn from(ciphertext: Ciphertext<C>) -> Self {
         ElgamalCipher::<C>(ciphertext.0, ciphertext.1)
@@ -34,6 +44,16 @@ impl<C: ProjectiveCurve> std::ops::Add<ElgamalCipher<C>> for ElgamalCipher<C> {
 
     fn add(self, _rhs: ElgamalCipher<C>) -> ElgamalCipher<C> {
         ElgamalCipher::<C>(self.0 + _rhs.0, self.1 + _rhs.1)
+    }
+}
+
+
+impl<C: ProjectiveCurve> std::iter::Sum for ElgamalCipher<C> {
+    fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
+        iter.fold(
+            ElgamalCipher::<C>(C::Affine::zero(), C::Affine::zero()),
+            |a, b| a + b,
+        )
     }
 }
 

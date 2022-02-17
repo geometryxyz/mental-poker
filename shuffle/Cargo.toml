@@ -14,3 +14,4 @@ ark-ff = "0.3.0"
 rand = "0.8.4"
 merlin = "3.0.0"
 starknet_curve = { path = "../starknet_curve" }
+verifiable_threshold_masking_protocol = { path = "../verifiable_threshold_masking_protocol" }

@@ -6,3 +6,5 @@ pub mod transcript;
 
 pub mod prover;
 pub mod proof;
+
+pub mod multi_exponent_argument;
