@@ -141,46 +141,6 @@ impl<'a, C: ProjectiveCurve, EncryptionScheme: AsymmetricEncryptionScheme> Prove
             tau_blinded,
             a_blinded
         }
-
-        // transcript.append(b"r_blinded", &r_blinded);
-        // transcript.append(b"b_blinded", &b_blinded);
-        // transcript.append(b"s_blinded", &s_blinded);
-        // transcript.append(b"tau_blinded", &tau_blinded);
-        // transcript.append(b"a_blinded", &a_blinded);
-
-        //VERIFICATION (for testing)
-        // assert_eq!(commit_b_k[m], PedersenCommitment::commit_scalar(self.parameters.commit_key[0], *self.parameters.commit_key.last().unwrap(), C::ScalarField::zero(), C::ScalarField::zero()));
-        // assert_eq!(vector_e_k[m], self.statement.product);
-
-        // let c_a_x = DotProductCalculator::<C>::scalars_by_points(&x_array, &self.statement.commitments_to_exponents).unwrap();
-        // let verif_commit_a= PedersenCommitment::<C>::commit_vector(&self.parameters.commit_key, &a_blinded, r_blinded);
-        // assert_eq!(verif_commit_a, c_a_x + a_0_commit);
-        
-        // let c_b_k = DotProductCalculator::<C>::scalars_by_points(&challenge_powers, &commit_b_k).unwrap();
-        // let verif_commit_b = PedersenCommitment::<C>::commit_scalar(self.parameters.commit_key[0], *self.parameters.commit_key.last().unwrap(), b_blinded, s_blinded);
-        // assert_eq!(c_b_k, verif_commit_b);
-
-        // let sum_e_k = DotProductCalculator::<C>::scalars_by_ciphers(&challenge_powers, &vector_e_k).unwrap();
-        // let aggregate_masking_cipher = DiscreteLogVTMF::<C>::mask(encryption_parameters, &self.parameters.public_key, &masking_generator.mul(b_blinded.into_repr()).into_affine(), &Randomness(tau_blinded));
-        // let aggregate_masking_cipher = DiscreteLogVTMF::<C>::mask(parameters, &self.parameters.public_key, &C::zero().into_affine(), &Randomness(C::ScalarField::zero()));
-
-        /*
-            c1 * x^m-1; x[m-1]
-            c2 * x^m-2; x[m-2]
-            c3 * x^m-3; x[m-3]
-            ...
-            cm * x^m-m; x[0]
-        */
-        // let verif_rhs: ElgamalCipher<C> = challenge_powers.iter().take(m).rev().zip(self.statement.shuffled_ciphers.iter()).map(|(power_of_x, cipher_chunk)|{
-        //     // x^m - i * a_vec
-        //     let xm_minus_i_times_a = a_blinded.iter().map(|element_of_a|{
-        //         *element_of_a * *power_of_x
-        //     }).collect::<Vec<C::ScalarField>>();
-        //     DotProductCalculator::<C>::scalars_by_ciphers(&xm_minus_i_times_a, cipher_chunk).unwrap()
-        // }).sum();
-
-        // assert_eq!(sum_e_k, aggregate_masking_cipher.unwrap() + verif_rhs); 
-
     }   
 
     fn diagonals_from_chunks(
