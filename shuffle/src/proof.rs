@@ -4,7 +4,7 @@ use ark_ff::{Field, Zero, PrimeField};
 use merlin::Transcript;
 use crate::transcript::TranscriptProtocol;
 use crate::product_argument::proof::{Proof as ProductArgumentProof};
-use crate::utils::commit;
+use crate::utils::{HomomorphicCommitment, PedersenCommitment};
 
 use crate::config::PublicConfig;
 use crate::error::Error;
@@ -48,7 +48,7 @@ impl<C, const SIZE: usize> Proof<C, SIZE>
 
         let zero = C::ScalarField::zero();
         let z_arr = iter::repeat(-z).take(SIZE).collect();
-        let z_commit = commit::<C>(&config.commit_key, &z_arr, zero);
+        let z_commit = PedersenCommitment::<C>::commit_vector(&config.commit_key, &z_arr, zero);
 
         let d_commit = self.pi_commit.mul(y.into_repr()) + self.exp_pi_commit;
         let d_minus_z_commit = d_commit + z_commit;

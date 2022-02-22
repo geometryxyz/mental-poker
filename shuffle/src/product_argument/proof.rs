@@ -4,7 +4,7 @@ use ark_ff::{Zero, PrimeField};
 use merlin::Transcript;
 use crate::transcript::TranscriptProtocol;
 
-use crate::utils::commit;
+use crate::utils::{HomomorphicCommitment, PedersenCommitment};
 use crate::config::PublicConfig;
 use crate::error::Error;
 
@@ -45,7 +45,7 @@ impl<C, const SIZE: usize> Proof<C, SIZE>
         assert_eq!(self.b_blinded[0], self.a_blinded[0]);
         assert_eq!(self.b_blinded[SIZE - 1], x * b);
 
-        let a_blinded_commit = commit::<C>(&config.commit_key, &self.a_blinded, self.r_blinded);
+        let a_blinded_commit = PedersenCommitment::<C>::commit_vector(&config.commit_key, &self.a_blinded, self.r_blinded);
         let ca_x_cd = c_d_minus_z.mul(x.into_repr()) + self.d_commit;
 
         if ca_x_cd != a_blinded_commit {
@@ -60,7 +60,7 @@ impl<C, const SIZE: usize> Proof<C, SIZE>
             consecutives[i] = x*self.b_blinded[i + 1] - self.b_blinded[i]*self.a_blinded[i + 1];
         }
 
-        let consecutive_commit = commit::<C>(&config.commit_key, &consecutives, self.s_blinded);
+        let consecutive_commit = PedersenCommitment::<C>::commit_vector(&config.commit_key, &consecutives, self.s_blinded);
 
         if c_diff_x_c_delta != consecutive_commit {
             return Err(Error::ProductArgumentVerificationError)

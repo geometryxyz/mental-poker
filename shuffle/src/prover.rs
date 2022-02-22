@@ -7,7 +7,7 @@ use ark_ff::Field;
 use crate::{
     config::PublicConfig,
     transcript::TranscriptProtocol,
-    utils::commit,
+    utils::{HomomorphicCommitment, PedersenCommitment},
     product_argument::{proof::Proof as ProductArgumentProof, prover::Prover as ProductArgumentProver},
     proof::Proof
 };
@@ -42,7 +42,7 @@ where
 
         let r = C::ScalarField::rand(&mut rng);
         let permutation_in_field = self.permutation.iter().map(|p_i| C::ScalarField::from(*p_i)).collect::<Vec<_>>();
-        let pi_commit = commit::<C>(&self.public_config.commit_key, &permutation_in_field, r);
+        let pi_commit = PedersenCommitment::<C>::commit_vector(&self.public_config.commit_key, &permutation_in_field, r);
 
         transcript.append(b"pi_commit", &pi_commit);
         let x: C::ScalarField = transcript.challenge_scalar(b"x");
@@ -52,7 +52,7 @@ where
             x.pow(Self::as_limbs(*p_i))
         }).collect::<Vec<_>>();
 
-        let exp_pi_commit = commit::<C>(&self.public_config.commit_key, &exp_pi, r_x);
+        let exp_pi_commit = PedersenCommitment::<C>::commit_vector(&self.public_config.commit_key, &exp_pi, r_x);
         transcript.append(b"exp_pi_commit", &exp_pi_commit);
 
         let y: C::ScalarField = transcript.challenge_scalar(b"y");
@@ -77,7 +77,7 @@ where
         }).collect::<Vec<_>>();
 
         let a_rand = y*r + r_x;
-        let a_commit = commit::<C>(&self.public_config.commit_key, &a, a_rand);
+        let a_commit = PedersenCommitment::<C>::commit_vector(&self.public_config.commit_key, &a, a_rand);
 
         let prod_arg_proof: ProductArgumentProof<C, SIZE> = ProductArgumentProver::create_proof(&self.public_config.commit_key, &mut transcript, a, a_commit, a_rand);
         Proof {

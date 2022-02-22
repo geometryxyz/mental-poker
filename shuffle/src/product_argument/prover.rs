@@ -5,7 +5,7 @@ use ark_std::UniformRand;
 use std::iter;
 use merlin::Transcript;
 
-use crate::utils::commit;
+use crate::utils::{HomomorphicCommitment, PedersenCommitment};
 use crate::product_argument::proof::Proof;
 use crate::transcript::TranscriptProtocol;
 
@@ -55,14 +55,14 @@ where
         let s_1 = C::ScalarField::rand(&mut rng);
         let s_x = C::ScalarField::rand(&mut rng);
 
-        let d_commit = commit::<C>(&commit_key, &ds, r_d);
+        let d_commit = PedersenCommitment::<C>::commit_vector(&commit_key, &ds, r_d);
 
         let minus_one = -C::ScalarField::one();
         let delta_ds = deltas.split_last().unwrap().1.iter().zip(ds.iter().skip(1)).map(|(delta, d)| {
             minus_one * delta * d
         }).collect::<Vec<_>>();
 
-        let delta_ds_commit = commit::<C>(&commit_key, &delta_ds, s_1);
+        let delta_ds_commit = PedersenCommitment::<C>::commit_vector(&commit_key, &delta_ds, s_1);
 
         let mut diffs = vec![C::ScalarField::zero(); SIZE - 1];
 
@@ -71,7 +71,7 @@ where
             diffs[i] = deltas[i + 1] - a[i + 1]*deltas[i] - bs[i]*ds[i + 1]
         }
 
-        let diff_commit = commit::<C>(&commit_key, &diffs, s_x);
+        let diff_commit = PedersenCommitment::<C>::commit_vector(&commit_key, &diffs, s_x);
 
         transcript.append(b"d_commit", &d_commit);
         transcript.append(b"delta_ds_commit", &delta_ds_commit);

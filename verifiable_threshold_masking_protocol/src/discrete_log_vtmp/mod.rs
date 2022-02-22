@@ -1,17 +1,87 @@
-use crate::*;
-
 pub mod tests;
 
 use ark_ec::{ProjectiveCurve, AffineCurve};
 use ark_crypto_primitives::encryption::{AsymmetricEncryptionScheme, elgamal::*, elgamal::{Ciphertext}};
 use ark_ff::{PrimeField};
-use ark_std::{Zero, One};
+use ark_std::{Zero, One, io::{Write, Read}};
 use ark_std::rand::Rng;
 use std::marker::PhantomData;
 use std::iter::Iterator;
-use chaum_pedersen_dl_equality::{Parameters as ChaumPedersenParameters, proof::Proof as ChaumPedersenProof, prover::Prover as ChaumPedersenProver};
-use schnorr_identification::{Parameters as SchnorrParameters, proof::Proof as SchnorrProof, prover::Prover as SchnorrProver};
+use crate::chaum_pedersen_dl_equality::{Parameters as ChaumPedersenParameters, proof::Proof as ChaumPedersenProof, prover::Prover as ChaumPedersenProver};
+use crate::schnorr_identification::{Parameters as SchnorrParameters, proof::Proof as SchnorrProof, prover::Prover as SchnorrProver};
+use crate::error::Error;
+use ark_serialize::{CanonicalSerialize, SWFlags, SerializationError, CanonicalDeserialize};
 
+// use ark_crypto_primitives::encryption::AsymmetricEncryptionScheme;
+// use ark_std::rand::Rng;
+// use error::Error;
+use std::ops::{Add, Mul};
+
+pub trait VerifiableThresholdMaskingProtocol<EncryptionScheme: AsymmetricEncryptionScheme> {
+    type DecryptionKey;
+    type ScalarField;
+    type Ciphertext: Add<Self::Ciphertext> + Mul<Self::ScalarField>;
+    type DLEqualityProof;
+    type PrivateKeyProof;
+
+    fn setup<R: Rng>(rng: &mut R) -> Result<EncryptionScheme::Parameters, Error>;
+    
+    fn keygen<R: Rng>(
+        pp: &EncryptionScheme::Parameters,
+        rng: &mut R
+    ) -> Result<(EncryptionScheme::PublicKey, EncryptionScheme::SecretKey), Error>;
+    
+    fn verified_keygen<R: Rng>(
+        pp: &EncryptionScheme::Parameters,
+        rng: &mut R
+    ) -> Result<(EncryptionScheme::PublicKey, EncryptionScheme::SecretKey, Self::PrivateKeyProof), Error>;
+
+    fn mask(
+        pp: &EncryptionScheme::Parameters,
+        shared_key: &EncryptionScheme::PublicKey,
+        message: &EncryptionScheme::Plaintext,
+        r: &EncryptionScheme::Randomness
+    ) -> Result<Self::Ciphertext, Error>;
+
+    fn verified_mask(
+        pp: &EncryptionScheme::Parameters,
+        shared_key: &EncryptionScheme::PublicKey,
+        message: &EncryptionScheme::Plaintext,
+        r: &EncryptionScheme::Randomness
+    ) -> Result<(Self::Ciphertext, Self::DLEqualityProof), Error>;
+
+    fn compute_decryption_key(
+        sk: &EncryptionScheme::SecretKey,
+        ciphertext: &Self::Ciphertext
+    ) -> Result<Self::DecryptionKey, Error>;
+
+    fn unmask(
+        decryption_key: &Self::DecryptionKey,
+        cipher: &Self::Ciphertext,
+    ) -> Result<EncryptionScheme::Plaintext, Error>;
+
+    fn remask(
+        pp: &EncryptionScheme::Parameters,
+        shared_key: &EncryptionScheme::PublicKey,
+        ciphertext: &Self::Ciphertext,
+        alpha: &EncryptionScheme::Randomness
+    ) -> Result<Self::Ciphertext, Error>;
+
+    fn verified_remask(
+        pp: &EncryptionScheme::Parameters,
+        shared_key: &EncryptionScheme::PublicKey,
+        ciphertext: &Self::Ciphertext,
+        alpha: &EncryptionScheme::Randomness
+    ) -> Result<(Self::Ciphertext, Self::DLEqualityProof), Error>;
+    
+    fn mask_shuffle(
+        pp: &EncryptionScheme::Parameters,
+        shared_key: &EncryptionScheme::PublicKey,
+        deck: &Vec<Self::Ciphertext>,
+        masking_factors: &Vec<EncryptionScheme::Randomness>,
+        permutation: &Vec<usize>
+    ) -> Result<Vec<Self::Ciphertext>, Error>;
+}
 
 pub struct DiscreteLogVTMF<C: ProjectiveCurve>  {
     _group: PhantomData<C>
@@ -62,6 +132,57 @@ impl<C: ProjectiveCurve> std::ops::Mul<C::ScalarField> for ElgamalCipher<C> {
 
     fn mul(self, scalar: C::ScalarField) -> ElgamalCipher<C> {
         ElgamalCipher::<C>(self.0.mul(scalar).into_affine(), self.1.mul(scalar).into_affine())
+    }
+}
+
+impl<C: ProjectiveCurve> CanonicalSerialize for ElgamalCipher<C> {
+    #[inline]
+    fn serialize<W: Write>(&self, mut writer: W) -> Result<(), SerializationError> {
+        self.0.serialize(&mut writer)?;
+        self.1.serialize(writer)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn serialized_size(&self) -> usize {
+        self.0.serialized_size() + self.1.serialized_size()
+    }
+
+    #[inline]
+    fn serialize_uncompressed<W: Write>(&self, mut writer: W) -> Result<(), SerializationError> {
+        self.0.serialize_uncompressed(&mut writer)?;
+        self.1.serialize_uncompressed(writer)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn uncompressed_size(&self) -> usize {
+        self.0.uncompressed_size() + self.1.uncompressed_size()
+    }
+}
+
+impl<C: ProjectiveCurve> CanonicalDeserialize for ElgamalCipher<C> {
+    fn deserialize<R: Read>(mut reader: R) -> Result<Self, SerializationError> {
+        let c0 = C::Affine::deserialize(&mut reader)?;
+        let c1 = C::Affine::deserialize(&mut reader)?;
+        
+        Ok(Self(c0, c1))
+    }
+
+    fn deserialize_uncompressed<R: Read>(
+        mut reader: R,
+    ) -> Result<Self, ark_serialize::SerializationError> {
+        let c0 = C::Affine::deserialize_uncompressed(&mut reader)?;
+        let c1 = C::Affine::deserialize_uncompressed(&mut reader)?;
+        
+        Ok(Self(c0, c1))
+    }
+
+    fn deserialize_unchecked<R: Read>(mut reader: R) -> Result<Self, SerializationError> {
+        let c0 = C::Affine::deserialize_unchecked(&mut reader)?;
+        let c1 = C::Affine::deserialize_unchecked(&mut reader)?;
+        
+        Ok(Self(c0, c1))
     }
 }
 
@@ -199,5 +320,29 @@ impl<C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>> for Disc
         }).collect::<Vec<_>>();
 
         Ok(permuted_deck)
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+    use starknet_curve::{Projective};
+    use ark_std::{UniformRand};
+    use rand::thread_rng;
+
+    #[test]
+    fn serialize_unserialize_test() {
+        let mut rng = thread_rng();
+        let c0 = Projective::rand(&mut rng).into_affine();
+        let c1 = Projective::rand(&mut rng).into_affine();
+
+        let cipher = ElgamalCipher::<Projective>(c0, c1);
+
+        let mut serialized = vec![0; cipher.serialized_size()];
+        cipher.serialize(&mut serialized[..]).unwrap();
+
+        let deserialized = ElgamalCipher::<Projective>::deserialize(&serialized[..]).unwrap();
+        assert_eq!(cipher, deserialized);
     }
 }

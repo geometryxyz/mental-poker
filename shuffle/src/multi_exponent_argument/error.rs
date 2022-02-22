@@ -2,5 +2,6 @@
 pub enum Error {
     DotProductLenError,
     TensorError,
-    DimensionError
+    DimensionError,
+    VerificationError
 }
