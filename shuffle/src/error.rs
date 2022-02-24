@@ -3,6 +3,7 @@ pub enum Error {
     ProductArgumentProofError,
     ProductArgumentVerificationError,
     ZeroArgumentVerificationError,
+    HadamardProductLenError,
     CommitmentError,
     DotProductLenError,
     TensorError,

@@ -7,10 +7,6 @@ use verifiable_threshold_masking_protocol::discrete_log_vtmp::{ElgamalCipher};
 use ark_ec::msm::VariableBaseMSM;
 use super::error::Error;
 
-// pub fn commit<C: ProjectiveCurve>(bases: &Vec<C::Affine>, x: &Vec<C::ScalarField>, r: C::ScalarField) -> C {
-//     let scalars = [x.as_slice(), &[r]].concat().iter().map(|x| x.into_repr()).collect::<Vec<_>>();
-//     VariableBaseMSM::multi_scalar_mul(&bases[..], &scalars)
-// }
 
 pub trait HomomorphicCommitment<C: ProjectiveCurve> {
     fn commit_scalar(g: C::Affine, h: C::Affine, x: C::ScalarField, r: C::ScalarField) -> C;
@@ -100,32 +96,6 @@ impl<C: ProjectiveCurve> RandomSampler<C> for PointSampler<C> {
     }
 }
 
-
-#[cfg(test)]
-mod test {
-    use starknet_curve::{Projective};
-    use starknet_curve::{Fr};
-    use super::{HomomorphicCommitment, PedersenCommitment};
-    use ark_std::{test_rng, UniformRand};
-    use ark_ec::ProjectiveCurve;
-
-    #[test]
-    fn test_commit() {
-        let rng = &mut test_rng();
-        let a1 = Fr::rand(rng);
-        let a2 = Fr::rand(rng);
-        let a3 = Fr::rand(rng);
-
-        let b1 = Projective::rand(rng);
-        let b2 = Projective::rand(rng);
-        let b3 = Projective::rand(rng);
-
-        let bases = vec![b1.into_affine(), b2.into_affine(), b3.into_affine()];
-        let x = vec![a1, a2];
-        let _cmt :Projective = PedersenCommitment::<Projective>::commit_vector(&bases, &x, a3);
-    }
-}
-
 pub trait DotProduct<C:ProjectiveCurve> {
     type Scalar;
     type Point;
@@ -197,5 +167,63 @@ impl<C: ProjectiveCurve> DotProduct<C> for DotProductCalculator<C> {
         let dot_product: Self::Scalar = scalars_a.iter().zip(scalars_b.iter()).map(|(s_a, s_b)| *s_a * *s_b).sum();
     
         Ok(dot_product)
+    }
+}
+
+pub trait HadamardProduct<C:ProjectiveCurve> {
+    type Scalar;
+
+    fn scalars_by_scalars(
+        scalars_a: &Vec<Self::Scalar>,
+        scalar_b: &Vec<Self::Scalar>)
+        -> Result<Vec<Self::Scalar>, Error>;
+}
+
+pub struct HadamardProductCalculator<C: ProjectiveCurve> {
+    _curve: PhantomData<C>
+}
+
+impl<C: ProjectiveCurve> HadamardProduct<C> for HadamardProductCalculator<C> {
+    type Scalar = C::ScalarField;
+
+    fn scalars_by_scalars(
+        scalars_a: &Vec<Self::Scalar>,
+        scalars_b: &Vec<Self::Scalar>)
+        -> Result<Vec<Self::Scalar>, Error> {
+        
+        if scalars_a.len() != scalars_b.len() {
+            return Err(Error::HadamardProductLenError)
+        }
+    
+        let hadamard_product: Vec<Self::Scalar> = scalars_a.iter().zip(scalars_b.iter()).map(|(&s_a, &s_b)| s_a * s_b).collect();
+    
+        Ok(hadamard_product)
+    }
+}
+
+
+
+#[cfg(test)]
+mod test {
+    use starknet_curve::{Projective};
+    use starknet_curve::{Fr};
+    use super::{HomomorphicCommitment, PedersenCommitment};
+    use ark_std::{test_rng, UniformRand};
+    use ark_ec::ProjectiveCurve;
+
+    #[test]
+    fn test_commit() {
+        let rng = &mut test_rng();
+        let a1 = Fr::rand(rng);
+        let a2 = Fr::rand(rng);
+        let a3 = Fr::rand(rng);
+
+        let b1 = Projective::rand(rng);
+        let b2 = Projective::rand(rng);
+        let b3 = Projective::rand(rng);
+
+        let bases = vec![b1.into_affine(), b2.into_affine(), b3.into_affine()];
+        let x = vec![a1, a2];
+        let _cmt :Projective = PedersenCommitment::<Projective>::commit_vector(&bases, &x, a3);
     }
 }

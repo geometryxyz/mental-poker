@@ -51,10 +51,6 @@ impl<'a, C: ProjectiveCurve> Prover<'a, C> {
         let a_0_commit = PedersenCommitment::<C>::commit_vector(self.parameters.commit_key, &a_0, r_0);
         let b_m_commit = PedersenCommitment::<C>::commit_vector(self.parameters.commit_key, &b_m, s_m);
 
-        // TODO: We need to use chunks a_0 to a_m and chunks b_0 to b_m to get the right dimensions
-        // right now we only have chunks a_1 to a_m and chunks b_0 to b_{m-1}
-
-        // let extended_a = self.witness.matrix_a[..]
         let a_0_vec = vec![a_0.clone(); 1];
         let extended_a = [&a_0_vec[..], &self.witness.matrix_a[..]].concat();
 
