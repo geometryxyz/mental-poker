@@ -6,7 +6,7 @@ use std::iter;
 use merlin::Transcript;
 
 use crate::utils::{HomomorphicCommitment, PedersenCommitment};
-use crate::product_argument::proof::Proof;
+use crate::product_argument::single_value_product_argument::proof::Proof;
 use crate::transcript::TranscriptProtocol;
 
 use std::marker::PhantomData;

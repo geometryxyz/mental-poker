@@ -3,7 +3,7 @@ use ark_ff::{Field, Zero, PrimeField};
 
 use merlin::Transcript;
 use crate::transcript::TranscriptProtocol;
-use crate::product_argument::proof::{Proof as ProductArgumentProof};
+use crate::product_argument::single_value_product_argument::proof::{Proof as ProductArgumentProof};
 use crate::utils::{HomomorphicCommitment, PedersenCommitment};
 
 use crate::config::PublicConfig;

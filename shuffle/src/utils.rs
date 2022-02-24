@@ -3,8 +3,9 @@ use ark_ff::{PrimeField, Zero};
 use rand::Rng;
 use std::marker::PhantomData;
 use ark_std::UniformRand;
-
+use verifiable_threshold_masking_protocol::discrete_log_vtmp::{ElgamalCipher};
 use ark_ec::msm::VariableBaseMSM;
+use super::error::Error;
 
 // pub fn commit<C: ProjectiveCurve>(bases: &Vec<C::Affine>, x: &Vec<C::ScalarField>, r: C::ScalarField) -> C {
 //     let scalars = [x.as_slice(), &[r]].concat().iter().map(|x| x.into_repr()).collect::<Vec<_>>();
@@ -122,5 +123,79 @@ mod test {
         let bases = vec![b1.into_affine(), b2.into_affine(), b3.into_affine()];
         let x = vec![a1, a2];
         let _cmt :Projective = PedersenCommitment::<Projective>::commit_vector(&bases, &x, a3);
+    }
+}
+
+pub trait DotProduct<C:ProjectiveCurve> {
+    type Scalar;
+    type Point;
+    type Ciphertext;
+
+    fn scalars_by_ciphers(
+        scalars: &Vec<Self::Scalar>,
+        ciphers: &Vec<Self::Ciphertext>)
+        -> Result<Self::Ciphertext, Error>;
+
+    fn scalars_by_points(
+        scalars: &Vec<Self::Scalar>,
+        points: &Vec<Self::Point>)
+        -> Result<Self::Point, Error>;
+
+    fn scalars_by_scalars(
+        scalars_a: &Vec<Self::Scalar>,
+        scalar_b: &Vec<Self::Scalar>)
+        -> Result<Self::Scalar, Error>;
+}
+
+pub struct DotProductCalculator<C: ProjectiveCurve> {
+    _curve: PhantomData<C>
+}
+
+impl<C: ProjectiveCurve> DotProduct<C> for DotProductCalculator<C> {
+    type Scalar = C::ScalarField;
+    type Point = C;
+    type Ciphertext = ElgamalCipher<C>;
+
+    fn scalars_by_ciphers(
+        scalars: &Vec<Self::Scalar>,
+        ciphers: &Vec<Self::Ciphertext>)
+        -> Result<Self::Ciphertext, Error> {
+        
+        if ciphers.len() != scalars.len() {
+            return Err(Error::DotProductLenError)
+        }
+    
+        let dot_product: Self::Ciphertext = ciphers.iter().zip(scalars.iter()).map(|(cipher, scalar)| *cipher * *scalar).sum();
+    
+        Ok(dot_product)
+    }
+
+
+    fn scalars_by_points(
+        scalars: &Vec<Self::Scalar>,
+        points: &Vec<Self::Point>)
+        -> Result<Self::Point, Error> {
+        
+        if points.len() != scalars.len() {
+            return Err(Error::DotProductLenError)
+        }
+    
+        let dot_product: Self::Point = points.iter().zip(scalars.iter()).map(|(&point, scalar)| point.mul(scalar.into_repr())).sum();
+    
+        Ok(dot_product)
+    }
+    
+    fn scalars_by_scalars(
+        scalars_a: &Vec<Self::Scalar>,
+        scalars_b: &Vec<Self::Scalar>)
+        -> Result<Self::Scalar, Error> {
+        
+        if scalars_a.len() != scalars_b.len() {
+            return Err(Error::DotProductLenError)
+        }
+    
+        let dot_product: Self::Scalar = scalars_a.iter().zip(scalars_b.iter()).map(|(s_a, s_b)| *s_a * *s_b).sum();
+    
+        Ok(dot_product)
     }
 }

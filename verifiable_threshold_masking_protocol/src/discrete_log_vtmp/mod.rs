@@ -10,7 +10,7 @@ use std::iter::Iterator;
 use crate::chaum_pedersen_dl_equality::{Parameters as ChaumPedersenParameters, proof::Proof as ChaumPedersenProof, prover::Prover as ChaumPedersenProver};
 use crate::schnorr_identification::{Parameters as SchnorrParameters, proof::Proof as SchnorrProof, prover::Prover as SchnorrProver};
 use crate::error::Error;
-use ark_serialize::{CanonicalSerialize, SWFlags, SerializationError, CanonicalDeserialize};
+use ark_serialize::{CanonicalSerialize, SerializationError, CanonicalDeserialize};
 
 // use ark_crypto_primitives::encryption::AsymmetricEncryptionScheme;
 // use ark_std::rand::Rng;

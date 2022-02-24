@@ -2,5 +2,12 @@
 pub enum Error {
     ProductArgumentProofError,
     ProductArgumentVerificationError,
-    CommitmentError
+    ZeroArgumentVerificationError,
+    CommitmentError,
+    DotProductLenError,
+    TensorError,
+    DimensionError,
+    VerificationError,
+    BilinearMapLenError,
+    DiagonalLengthError,
 }

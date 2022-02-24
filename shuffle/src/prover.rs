@@ -4,11 +4,12 @@ use ark_std::{UniformRand};
 use merlin::Transcript;
 use ark_ff::Field;
 
+
 use crate::{
     config::PublicConfig,
     transcript::TranscriptProtocol,
     utils::{HomomorphicCommitment, PedersenCommitment},
-    product_argument::{proof::Proof as ProductArgumentProof, prover::Prover as ProductArgumentProver},
+    product_argument::single_value_product_argument::{proof::Proof as ProductArgumentProof, prover::Prover as ProductArgumentProver},
     proof::Proof
 };
 

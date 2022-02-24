@@ -2,12 +2,12 @@ use ark_ec::{ProjectiveCurve, AffineCurve};
 use ark_crypto_primitives::{encryption::elgamal::{Randomness, Parameters as ElGamalParameters}};
 use ark_ff::{PrimeField, One, Zero};
 use std::iter;
-use super::{Statement, Parameters, DotProduct, DotProductCalculator, error::Error};
+use super::{Statement, Parameters};
 use merlin::Transcript;
 use super::super::transcript::TranscriptProtocol;
 use verifiable_threshold_masking_protocol::discrete_log_vtmp::{ElgamalCipher, VerifiableThresholdMaskingProtocol, DiscreteLogVTMF};
-
-use crate::utils::{PedersenCommitment, HomomorphicCommitment};
+use crate::utils::{PedersenCommitment, HomomorphicCommitment, DotProduct, DotProductCalculator};
+use crate::error::Error;
 
 pub struct Proof<C> 
 where 
@@ -74,15 +74,15 @@ impl<C: ProjectiveCurve> Proof<C> {
         
         assert_eq!(self.vector_e_k[m], statement.product);
 
-        let c_a_x = DotProductCalculator::<C>::scalars_by_points(&x_array, &statement.commitments_to_exponents)?;
+        let c_a_x = DotProductCalculator::<C>::scalars_by_points(&x_array, &statement.commitments_to_exponents).unwrap();
         let verifier_commit_a= PedersenCommitment::<C>::commit_vector(&proof_parameters.commit_key, &self.a_blinded, self.r_blinded);
         assert_eq!(verifier_commit_a, c_a_x + self.a_0_commit);
         
-        let c_b_k = DotProductCalculator::<C>::scalars_by_points(&challenge_powers, &self.commit_b_k)?;
+        let c_b_k = DotProductCalculator::<C>::scalars_by_points(&challenge_powers, &self.commit_b_k).unwrap();
         let verif_commit_b = PedersenCommitment::<C>::commit_scalar(proof_parameters.commit_key[0], *proof_parameters.commit_key.last().unwrap(), self.b_blinded, self.s_blinded);
         assert_eq!(c_b_k, verif_commit_b);
 
-        let sum_e_k = DotProductCalculator::<C>::scalars_by_ciphers(&challenge_powers, &self.vector_e_k)?;
+        let sum_e_k = DotProductCalculator::<C>::scalars_by_ciphers(&challenge_powers, &self.vector_e_k).unwrap();
         let aggregate_masking_cipher = DiscreteLogVTMF::<C>::mask(
             encryption_parameters,
             &proof_parameters.public_key,

@@ -1,11 +1,11 @@
 use ark_ec::{ProjectiveCurve, AffineCurve};
-use super::{Statement, Parameters, Witness, DotProduct, DotProductCalculator};
+use super::{Statement, Parameters, Witness};
 use crate::{
     transcript::TranscriptProtocol,
-    utils::{RandomSampler, ScalarSampler, HomomorphicCommitment, PedersenCommitment}
+    utils::{RandomSampler, ScalarSampler, HomomorphicCommitment, PedersenCommitment, DotProduct, DotProductCalculator}
 };
 use verifiable_threshold_masking_protocol::discrete_log_vtmp::{ElgamalCipher, VerifiableThresholdMaskingProtocol, DiscreteLogVTMF};
-use super::error::Error;
+use crate::error::Error;
 use std::iter;
 use std::marker::PhantomData;
 use super::proof::Proof;
