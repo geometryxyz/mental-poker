@@ -42,6 +42,32 @@ impl<'a, C: ProjectiveCurve> Prover<'a, C> {
     pub fn prove<R: Rng>(&self, rng: &mut R) -> Proof<C> {
         let mut transcript = self.transcript.clone();
 
+        // sanity checks
+
+        // assert that inputs have the right property w.r.t. bilinear map
+        let should_be_zero: C::ScalarField = self.witness.matrix_a.iter().zip(self.witness.matrix_b.iter()).map(|(a, d)| {
+            self.statement.bilinear_map.compute_mapping(a, d).unwrap()
+        }).sum();
+        assert_eq!(C::ScalarField::zero(), should_be_zero);
+
+        // check cA commits
+        let c_a_calculated = self.witness.matrix_a.iter().zip(self.witness.randoms_for_a_commit.iter()).map(|(a, &r)| {
+            PedersenCommitment::commit_vector(self.parameters.commit_key, a, r)
+        }).collect::<Vec<C>>();
+
+        let matched = c_a_calculated.iter().zip(self.statement.commitment_to_a.iter()).filter(|&(a, b)| a == b).count();
+        assert_eq!(matched, c_a_calculated.len());
+        assert_eq!(matched, self.statement.commitment_to_a.len());
+
+        // check cB commits
+        let c_b_calculated = self.witness.matrix_b.iter().zip(self.witness.randoms_for_b_commit.iter()).map(|(a, &r)| {
+            PedersenCommitment::commit_vector(self.parameters.commit_key, a, r)
+        }).collect::<Vec<C>>();
+
+        let matched = c_b_calculated.iter().zip(self.statement.commitment_to_b.iter()).filter(|&(a, b)| a == b).count();
+        assert_eq!(matched, c_b_calculated.len());
+        assert_eq!(matched, self.statement.commitment_to_b.len());
+
         let a_0 = ScalarSampler::<C>::sample_vector(rng, self.parameters.n);
         let b_m = ScalarSampler::<C>::sample_vector(rng, self.parameters.n);
 
@@ -58,6 +84,9 @@ impl<'a, C: ProjectiveCurve> Prover<'a, C> {
         let extended_b = [&self.witness.matrix_b[..], &b_m_vec[..]].concat();
 
         let diagonals = self.diagonals_from_chunks(&extended_a, &extended_b, self.parameters.m+1, C::ScalarField::zero()).unwrap();
+
+        //sanity check that middle diagonal is zero
+        assert_eq!(diagonals[self.parameters.m + 1], C::ScalarField::zero());
 
         let mut t = ScalarSampler::<C>::sample_vector(rng, 2*self.parameters.m + 1);
         t[self.parameters.m + 1] = C::ScalarField::zero();
@@ -99,18 +128,16 @@ impl<'a, C: ProjectiveCurve> Prover<'a, C> {
         first_m_powers_reversed.reverse();
         
         let first_m_non_zero_powers = challenge_powers[1..self.parameters.m+1].to_vec();
-        let mut first_m_non_zero_powers_reversed = first_m_powers[..].to_vec();
+        let mut first_m_non_zero_powers_reversed = first_m_non_zero_powers[..].to_vec();
         first_m_non_zero_powers_reversed.reverse();
 
-        //skip a_0
-        let mut a_blinded: Vec<C::ScalarField> = Vec::with_capacity(self.parameters.m + 1);
-
-        // a1[0]x + a1[0]x^2 ... am[0]x^m
-        // a1[1]x + a1[1]x^2 ... am[1]x^m
-        // a1[2]x + a1[2]x^2 ... am[2]x^m
-        // a1[3]x + a1[3]x^2 ... am[3]x^m
+        // a1[0]x + a2[0]x^2 ... am[0]x^m
+        // a1[1]x + a2[1]x^2 ... am[1]x^m
+        // a1[2]x + a2[2]x^2 ... am[2]x^m
+        // a1[3]x + a2[3]x^2 ... am[3]x^m
         // ...
         // a1[n]x + a2[n]x^2 ... am[n]x^m = b[n]
+        let mut a_blinded: Vec<C::ScalarField> = Vec::with_capacity(self.parameters.m + 1);
         for i in 0..self.parameters.n {
             let mut poly = a_0[i];
             for j in 0..self.parameters.m {
@@ -128,12 +155,15 @@ impl<'a, C: ProjectiveCurve> Prover<'a, C> {
             b_blinded.push(poly);
         }
 
+        let a_star_b = self.statement.bilinear_map.compute_mapping(&a_blinded, &b_blinded).unwrap();
+        let dk_xk = DotProductCalculator::<C>::scalars_by_scalars(&challenge_powers, &diagonals).unwrap();
+        assert_eq!(a_star_b, dk_xk);
+
         let r_blinded = r_0 + DotProductCalculator::<C>::scalars_by_scalars(&self.witness.randoms_for_a_commit, &first_m_non_zero_powers).unwrap();
-        let s_blinded = DotProductCalculator::<C>::scalars_by_scalars(&self.witness.randoms_for_b_commit, &first_m_powers_reversed).unwrap() + s_m;
+        let s_blinded = DotProductCalculator::<C>::scalars_by_scalars(&self.witness.randoms_for_b_commit, &first_m_non_zero_powers_reversed).unwrap() + s_m;
         let t_blinded = DotProductCalculator::<C>::scalars_by_scalars(&t, &challenge_powers).unwrap();
 
 
-        
         Proof {
             a_0_commit, 
             b_m_commit,

@@ -62,6 +62,8 @@ impl<'a, C: ProjectiveCurve> Prover<'a, C> {
         .collect::<Vec<C>>();
 
         s.insert(0, self.witness.randoms_for_a_commit[0]);
+
+        assert_eq!(b_commit.last().unwrap(), &self.statement.commitment_to_b);
         s.push(self.witness.random_for_b_commit);
 
         // Public parameters
@@ -104,22 +106,26 @@ impl<'a, C: ProjectiveCurve> Prover<'a, C> {
             b_i_commit.mul(x_power_i.into_repr())
         }).collect::<Vec<C>>();
 
-        let c_d: C = c_d_i.iter().sum();
-        c_d_i.push(c_d);
+        let temp_x_c_d_shifted = b_commit.iter().skip(1).zip(x_challenge_powers.iter().skip(1)).map(|(&b_i_commit, &x_power_i)| {
+            b_i_commit.mul(x_power_i.into_repr())
+        }).collect::<Vec<C>>();
+
+        let final_cd: C = temp_x_c_d_shifted.iter().fold(C::zero(), |acc, x| acc + x);
+        c_d_i.push(final_cd);
 
         // prepare witness
         let vec_openings_to_a = [&self.witness.matrix_a[1..], &[vec_minus_ones]].concat().to_vec();
         let vec_randoms_for_a = [&self.witness.randoms_for_a_commit[1..], &[C::ScalarField::zero()]].concat().to_vec();
 
-        let final_t = DotProductCalculator::<C>::scalars_by_scalars(&x_challenge_powers[1..=self.parameters.m-1].to_vec(), &s[2..=self.parameters.m].to_vec()).unwrap();
+        let final_t = DotProductCalculator::<C>::scalars_by_scalars(&x_challenge_powers[1..=self.parameters.m-1].to_vec(), &s[1..=self.parameters.m-1].to_vec()).unwrap();
         let vec_randoms_for_d = 
-        x_challenge_powers.iter().skip(1).zip(s.iter()).map(|(&x_power_i, &s_i)| {
+            x_challenge_powers.iter().skip(1).zip(s.iter()).map(|(&x_power_i, &s_i)| {
             x_power_i * s_i
         })
         .chain(iter::once(final_t))
         .collect::<Vec<C::ScalarField>>();
 
-        let temp_x_b = b[2..=self.parameters.m].to_vec().iter().zip(x_challenge_powers.iter().skip(1)).map(|(b_chunk, &x_power_i)| {
+        let temp_x_b = b[1..=self.parameters.m-1].to_vec().iter().zip(x_challenge_powers.iter().skip(1)).map(|(b_chunk, &x_power_i)| {
             let x_power_i_vector = vec![x_power_i; self.parameters.n];
             HadamardProductCalculator::<C>::scalars_by_scalars(b_chunk, &x_power_i_vector).unwrap()
         }).collect::<Vec<Vec<C::ScalarField>>>();
@@ -136,12 +142,22 @@ impl<'a, C: ProjectiveCurve> Prover<'a, C> {
         .chain(iter::once(final_d))
         .collect::<Vec<_>>();
 
-        let zero_arg_statement = zero_argument::Statement::<C>::new(&vec_commits_to_a, &c_d_i, &prover_mapping);
+        let vec_commits_to_a_shifted = vec_commits_to_a[1..].to_vec();
+        let zero_arg_statement = zero_argument::Statement::<C>::new(&vec_commits_to_a_shifted, &c_d_i, &prover_mapping);
         let zero_arg_params = zero_argument::Parameters::<C>::new(self.parameters.m, self.parameters.n, &self.parameters.commit_key);
         let zero_arg_witness = zero_argument::Witness::<C>::new(&vec_openings_to_a, &vec_randoms_for_a, &vec_openings_to_d, &vec_randoms_for_d);
-
-        let zero_arg_prover = crate::product_argument::zero_argument::prover::Prover::<C>::new(&zero_arg_params, &zero_arg_statement, &zero_arg_witness);
+        let zero_arg_prover = zero_argument::prover::Prover::<C>::new(&zero_arg_params, &zero_arg_statement, &zero_arg_witness);
 
         let zero_arg_proof = zero_arg_prover.prove(rng);
+
+        //TMP VERIFICATION
+        // check that 0 arg works
+        // let should_be_zero = prover_mapping.compute_mapping(vec_openings_to_a, vec_openings_to_d);
+        let should_be_zero: C::ScalarField = vec_openings_to_a.iter().zip(vec_openings_to_d.iter()).map(|(a, d)| {
+            prover_mapping.compute_mapping(a, d).unwrap()
+        }).sum();
+        assert_eq!(C::ScalarField::zero(), should_be_zero);
+
+        assert_eq!(Ok(()), zero_arg_proof.verify(&zero_arg_params, &zero_arg_statement));
     }
 }

@@ -1,5 +1,6 @@
 pub mod prover;
 pub mod proof;
+pub mod tests;
 
 use ark_ec::{ProjectiveCurve};
 

@@ -71,21 +71,21 @@ impl<C: ProjectiveCurve> Proof<C> {
         first_m_powers_reversed.reverse();
         
         let first_m_non_zero_powers = challenge_powers[1..proof_parameters.m+1].to_vec();
-        let mut first_m_non_zero_powers_reversed = first_m_powers[..].to_vec();
+        let mut first_m_non_zero_powers_reversed = first_m_non_zero_powers[..].to_vec();
         first_m_non_zero_powers_reversed.reverse();
 
         // Verify commitment to A against a commitment on blinded a with blinded random r
         let left: C = self.a_0_commit + DotProductCalculator::<C>::scalars_by_points(&first_m_non_zero_powers, statement.commitment_to_a).unwrap();
         let right = PedersenCommitment::<C>::commit_vector(&proof_parameters.commit_key, &self.a_blinded, self.r_blinded);
         if left != right {
-            return Err(Error::ZeroArgumentVerificationError);
+            return Err(Error::ZeroArgumentVerificationError1);
         }
         
         // Verify commitment to B against a commitment on blinded b with blinded random s
         let left: C = self.b_m_commit + DotProductCalculator::<C>::scalars_by_points(&first_m_non_zero_powers_reversed, statement.commitment_to_b).unwrap();
         let right = PedersenCommitment::<C>::commit_vector(&proof_parameters.commit_key, &self.b_blinded, self.s_blinded);
         if left != right {
-            return Err(Error::ZeroArgumentVerificationError);
+            return Err(Error::ZeroArgumentVerificationError2);
         }
 
         
@@ -94,7 +94,7 @@ impl<C: ProjectiveCurve> Proof<C> {
         let a_star_b = statement.bilinear_map.compute_mapping(&self.a_blinded, &self.b_blinded).unwrap();
         let right = PedersenCommitment::<C>::commit_scalar(proof_parameters.commit_key[0], *proof_parameters.commit_key.last().unwrap(), a_star_b, self.t_blinded);
         if left != right {
-            return Err(Error::ZeroArgumentVerificationError);
+            return Err(Error::ZeroArgumentVerificationError3);
         }
 
         Ok(())
