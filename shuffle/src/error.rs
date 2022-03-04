@@ -2,6 +2,7 @@
 pub enum Error {
     ProductArgumentProofError,
     ProductArgumentVerificationError,
+    HadamardProductVerificationError,
     ZeroArgumentVerificationError,
     ZeroArgumentVerificationError1,
     ZeroArgumentVerificationError2,

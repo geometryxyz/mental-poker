@@ -1,11 +1,14 @@
 use super::{Statement, Parameters, Witness};
 
 use crate::{
-    error::Error,
     utils::{
-        ScalarSampler, RandomSampler, PedersenCommitment, HomomorphicCommitment, DotProduct, DotProductCalculator, HadamardProduct, HadamardProductCalculator}, 
+        ScalarSampler, RandomSampler, PedersenCommitment, HomomorphicCommitment, DotProduct, DotProductCalculator, HadamardProduct, HadamardProductCalculator
+    }, 
     transcript::TranscriptProtocol,
-    product_argument::{zero_argument::{YMapping, BilinearMap}, zero_argument}
+    product_argument::{
+        zero_argument::{self, YMapping},
+        hadamard_product_argument::proof::Proof,
+    }
 };
 
 use ark_ec::{ProjectiveCurve};
@@ -39,15 +42,18 @@ impl<'a, C: ProjectiveCurve> Prover<'a, C> {
         }
     }
 
-    pub fn prove<R: Rng>(&self, rng: &mut R) {
+    pub fn prove<R: Rng>(&self, rng: &mut R) -> Proof<C> {
         let mut transcript = self.transcript.clone();
 
+        // Compute intermediate products (b values). Final b should be the one from the witness
         let mut acc = vec![C::ScalarField::one(); self.parameters.n];
 
-        let b = self.witness.matrix_a.iter().map(|x| {
+        let b = self.witness.matrix_a[..self.witness.matrix_a.len()-1].iter().map(|x| {
             acc = acc.iter().zip(x.iter()).map(|(&s_a, &s_b)| s_a * s_b).collect();
             acc.clone()
-        }).collect::<Vec<_>>();
+        })
+        .chain(iter::once(self.witness.vector_b.to_vec()))
+        .collect::<Vec<_>>();
 
         let mut s = ScalarSampler::<C>::sample_vector(rng, self.parameters.m - 2);
 
@@ -62,17 +68,12 @@ impl<'a, C: ProjectiveCurve> Prover<'a, C> {
         .collect::<Vec<C>>();
 
         s.insert(0, self.witness.randoms_for_a_commit[0]);
-
-        assert_eq!(b_commit.last().unwrap(), &self.statement.commitment_to_b);
         s.push(self.witness.random_for_b_commit);
 
         // Public parameters
         transcript.append(b"commit_key", self.parameters.commit_key);
         transcript.append(b"m", &self.parameters.m);
         transcript.append(b"n", &self.parameters.n);
-
-        // Random values
-        transcript.append(b"s", &s);
 
         // Commited values
         transcript.append(b"b_commit", &b_commit);
@@ -81,7 +82,7 @@ impl<'a, C: ProjectiveCurve> Prover<'a, C> {
         let x: C::ScalarField = transcript.challenge_scalar(b"x");
         let y: C::ScalarField = transcript.challenge_scalar(b"y");
 
-        // Precompute all powers of the challenge from 0 to number_of_diagonals
+        // Precompute all powers of the x challenge
         let x_challenge_powers =
         iter::once(C::ScalarField::one())
         .chain(iter::once(x))
@@ -93,9 +94,10 @@ impl<'a, C: ProjectiveCurve> Prover<'a, C> {
         )
         .collect::<Vec<_>>();
 
-        // Prepare statement
+        // Use the second challenge to define our bilinear mapping
         let prover_mapping = YMapping::<C>::new(y, self.parameters.n);
 
+        // Prepare statement
         let minus_one = -C::ScalarField::one();
         let vec_minus_ones = vec![minus_one; self.parameters.n];
         let minus_ones_commit = PedersenCommitment::<C>::commit_vector(self.parameters.commit_key, &vec_minus_ones, C::ScalarField::zero());
@@ -150,14 +152,12 @@ impl<'a, C: ProjectiveCurve> Prover<'a, C> {
 
         let zero_arg_proof = zero_arg_prover.prove(rng);
 
-        //TMP VERIFICATION
-        // check that 0 arg works
-        // let should_be_zero = prover_mapping.compute_mapping(vec_openings_to_a, vec_openings_to_d);
-        let should_be_zero: C::ScalarField = vec_openings_to_a.iter().zip(vec_openings_to_d.iter()).map(|(a, d)| {
-            prover_mapping.compute_mapping(a, d).unwrap()
-        }).sum();
-        assert_eq!(C::ScalarField::zero(), should_be_zero);
-
-        assert_eq!(Ok(()), zero_arg_proof.verify(&zero_arg_params, &zero_arg_statement));
+        Proof{
+            // Round 1
+            b_commits: b_commit,
+        
+            // Round 2
+            zero_arg_proof: zero_arg_proof
+        }
     }
 }
