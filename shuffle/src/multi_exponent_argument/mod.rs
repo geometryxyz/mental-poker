@@ -4,6 +4,9 @@ use ark_ec::{ProjectiveCurve};
 pub mod prover;
 pub mod proof;
 
+
+/// Parameters for the multi-exponentiation argument. Contains the encryption public key, a commitment key
+/// and a public group generator which will be used for masking. 
 pub struct Parameters<'a, C: ProjectiveCurve> {
     pub public_key: &'a C::Affine,
     pub commit_key: &'a Vec<C::Affine>,
@@ -20,22 +23,28 @@ impl<'a, C: ProjectiveCurve> Parameters<'a, C> {
     }
 }
 
+/// Witness for the multi-exponentiation argument. Contains a hidden n-by-m matrix A, a vector of randoms r used to commit to 
+/// the columns of A and an aggregate re-encryption factor rho
 pub struct Witness<'a, C: ProjectiveCurve> {
     pub matrix_a: &'a Vec<Vec<C::ScalarField>>,
     pub matrix_blinders: &'a Vec<C::ScalarField>,
-    pub ro: C::ScalarField
+    pub rho: C::ScalarField
 }
 
 impl<'a, C: ProjectiveCurve> Witness<'a, C> {
-    pub fn new(matrix_a: &'a Vec<Vec<C::ScalarField>>, matrix_blinders: &'a Vec<C::ScalarField>, ro: C::ScalarField) -> Self {
+    pub fn new(matrix_a: &'a Vec<Vec<C::ScalarField>>, matrix_blinders: &'a Vec<C::ScalarField>, rho: C::ScalarField) -> Self {
         Self {
             matrix_a, 
             matrix_blinders, 
-            ro
+            rho
         }
     }
 }
 
+
+/// Statement for the multi-exponentiation argument. Contains an m-by-n matrix of ciphertexts matC, a ciphertext C
+/// and a vector of commitments to the columns of a hidden n-by-m matrix A (see `Witness`) such that:
+/// C is the aggregation of the re-encrypted ciphertexts using the blinding factors found in A.
 pub struct Statement<'a, C: ProjectiveCurve> {
     pub shuffled_ciphers: &'a Vec<Vec<ElgamalCipher<C>>>,
     pub product: ElgamalCipher<C>,

@@ -22,6 +22,9 @@ impl<'a, C: ProjectiveCurve> Parameters<'a, C> {
     }
 }
 
+/// Witness for the Hadamard product argument. Contains a matrix A of size, vector r, vector b and scalar s such that:
+/// b is the Hadamard product of the columns of A, `commitment_to_a` (see `Statement`) is a vector of commitments to the 
+/// columns of A using the randoms r and `commitment_to_b` (see `Statement`) is a commitment to the vector b using random s.
 pub struct Witness<'a, C: ProjectiveCurve> {
     pub matrix_a: &'a Vec<Vec<C::ScalarField>>,
     pub randoms_for_a_commit: &'a Vec<C::ScalarField>,
@@ -46,6 +49,9 @@ impl<'a, C: ProjectiveCurve> Witness<'a, C> {
 }
 
 
+/// Statement for the Hadamard product argument. Contains a vector `commitment_to_a` of commitments to the columns 
+/// of matrix `A` using the randoms `r` (see `Witness`) and a point `commitment_to_b`, which is a commitment to the
+/// vector b using the random `s` (see `Witness`).
 pub struct Statement<'a, C: ProjectiveCurve> {
     pub commitment_to_a: &'a Vec<C>,
     pub commitment_to_b: C,

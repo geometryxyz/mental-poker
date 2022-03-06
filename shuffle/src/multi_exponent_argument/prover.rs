@@ -66,7 +66,7 @@ impl<'a, C: ProjectiveCurve, EncryptionScheme: AsymmetricEncryptionScheme> Prove
 
         b[m] = C::ScalarField::zero();
         s[m] = C::ScalarField::zero();
-        tau[m] = self.witness.ro;
+        tau[m] = self.witness.rho;
 
         let a_0_commit = PedersenCommitment::<C>::commit_vector(&self.parameters.commit_key.to_vec(), &a_0, r_0);
 

@@ -6,7 +6,7 @@ use ark_ec::{ProjectiveCurve};
 use crate::error::Error;
 use std::iter;
 
-/// Parameters for the zero argument for a bilinear map. Contains only a commitment key.
+/// Parameters for the zero argument for a bilinear map. Contains a commitment key and the matrix dimensions.
 pub struct Parameters<'a, C: ProjectiveCurve> {
     pub commit_key: &'a Vec<C::Affine>,
     pub m: usize,
@@ -23,8 +23,10 @@ impl<'a, C: ProjectiveCurve> Parameters<'a, C> {
     }
 }
 
-/// Witness for the zero argument for a bilinear map.
-/// Notation follows that of the Bayer-Groth paper
+/// Witness for the zero argument for a bilinear map. Contains a matrix A, a vector r, a matrix B and a vector s such that:
+/// `commitment_to_a` (see `Statement`) is a vector of commitments to the columns of A using randoms r, `commitment_to_b` 
+/// (see `Statement`) is a vector of commitments to the columns of B using randoms s and the sum of the column-wise application
+/// of the bilinear map to A and B is 0.
 pub struct Witness<'a, C: ProjectiveCurve> {
     pub matrix_a: &'a Vec<Vec<C::ScalarField>>,
     pub randoms_for_a_commit: &'a Vec<C::ScalarField>,
@@ -48,6 +50,10 @@ impl<'a, C: ProjectiveCurve> Witness<'a, C> {
     }
 }
 
+
+/// Statement for the zero argument for a bilinear map. Contains a vector `commitment_to_a` of commitments to the columns
+/// of matrix `A` using the randoms `r` (see `Witness`), a vector `commitment_to_b` of commitments to the columns of matrix 
+/// B using the randoms `s` (see `Witness`) and a bilinear map Z^n x Z^n -> Z.
 pub struct Statement<'a, C: ProjectiveCurve> {
     pub commitment_to_a: &'a Vec<C>,
     pub commitment_to_b: &'a Vec<C>,
