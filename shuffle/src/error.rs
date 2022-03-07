@@ -7,6 +7,7 @@ pub enum Error {
     ZeroArgumentVerificationError1,
     ZeroArgumentVerificationError2,
     ZeroArgumentVerificationError3,
+    SingleValueProductVerificationError,
     HadamardProductLenError,
     CommitmentError,
     DotProductLenError,
@@ -15,4 +16,5 @@ pub enum Error {
     VerificationError,
     BilinearMapLenError,
     DiagonalLengthError,
+    MultiExpVerficationError,
 }

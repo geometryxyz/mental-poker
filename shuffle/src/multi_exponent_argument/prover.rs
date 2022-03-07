@@ -252,11 +252,11 @@ mod test {
         let commit_key = generate_commit_key::<_, Projective>(rng, &n);
 
         let product_raw = DotProductCalculator::<Projective>::scalars_by_ciphers(&shuffle_maskings, &shuffled_deck).unwrap();
-        let ro = Fr::rand(rng);
-        let product = DiscreteLogVTMF::<Projective>::remask(&elgamal_parameters, &master_pk, &product_raw, &Randomness(ro)).unwrap();
+        let rho = Fr::rand(rng);
+        let product = DiscreteLogVTMF::<Projective>::remask(&elgamal_parameters, &master_pk, &product_raw, &Randomness(rho)).unwrap();
         let masking_generator = Projective::rand(rng).into_affine();
 
-        let mask = DiscreteLogVTMF::<Projective>::mask(&elgamal_parameters, &master_pk, &masking_generator.mul(Fr::zero()).into_affine(), &Randomness::<Projective>(ro)).unwrap();
+        let mask = DiscreteLogVTMF::<Projective>::mask(&elgamal_parameters, &master_pk, &masking_generator.mul(Fr::zero()).into_affine(), &Randomness::<Projective>(rho)).unwrap();
         assert_eq!(product, product_raw + mask);
 
 
@@ -266,7 +266,7 @@ mod test {
         }).collect::<Vec<_>>();
 
         let proof_parameters = Parameters::<Projective>::new(&master_pk, &commit_key, masking_generator);
-        let witness = Witness::new(&a_chunks, &r, ro);
+        let witness = Witness::new(&a_chunks, &r, rho);
         let statement = Statement::new(&c_chunks, product, &c_a);
 
         let prover: Prover<Projective, ElGamal<Projective>> = Prover::<Projective, ElGamal<Projective>>::new(&proof_parameters, &statement, &witness);

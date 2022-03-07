@@ -66,21 +66,39 @@ impl<C: ProjectiveCurve> Proof<C> {
         // take vector x: x, x^2, x^3, ..., x^m
         let x_array = challenge_powers[1..m+1].to_vec();
         
-        assert_eq!(
-            self.commit_b_k[m],
-            PedersenCommitment::<C>::commit_scalar(proof_parameters.commit_key[0], *proof_parameters.commit_key.last().unwrap(), C::ScalarField::zero(), C::ScalarField::zero())
+        // assert_eq!(
+        //     self.commit_b_k[m],
+        //     PedersenCommitment::<C>::commit_scalar(proof_parameters.commit_key[0], *proof_parameters.commit_key.last().unwrap(), C::ScalarField::zero(), C::ScalarField::zero())
+        // );
+        
+        let left = self.commit_b_k[m];
+        let right = PedersenCommitment::<C>::commit_scalar(
+            proof_parameters.commit_key[0], 
+            *proof_parameters.commit_key.last().unwrap(), 
+            C::ScalarField::zero(), 
+            C::ScalarField::zero()
         );
 
-        
-        assert_eq!(self.vector_e_k[m], statement.product);
+        if left != right {
+            return Err(Error::MultiExpVerficationError);
+        }
+
+        if self.vector_e_k[m] != statement.product {
+            return Err(Error::MultiExpVerficationError);
+        }
 
         let c_a_x = DotProductCalculator::<C>::scalars_by_points(&x_array, &statement.commitments_to_exponents).unwrap();
-        let verifier_commit_a= PedersenCommitment::<C>::commit_vector(&proof_parameters.commit_key, &self.a_blinded, self.r_blinded);
-        assert_eq!(verifier_commit_a, c_a_x + self.a_0_commit);
+        let verifier_commit_a = PedersenCommitment::<C>::commit_vector(&proof_parameters.commit_key, &self.a_blinded, self.r_blinded);
+
+        if c_a_x + self.a_0_commit != verifier_commit_a {
+            return Err(Error::MultiExpVerficationError);
+        }
         
         let c_b_k = DotProductCalculator::<C>::scalars_by_points(&challenge_powers, &self.commit_b_k).unwrap();
         let verif_commit_b = PedersenCommitment::<C>::commit_scalar(proof_parameters.commit_key[0], *proof_parameters.commit_key.last().unwrap(), self.b_blinded, self.s_blinded);
-        assert_eq!(c_b_k, verif_commit_b);
+        if c_b_k != verif_commit_b {
+            return Err(Error::MultiExpVerficationError);
+        }
 
         let sum_e_k = DotProductCalculator::<C>::scalars_by_ciphers(&challenge_powers, &self.vector_e_k).unwrap();
         let aggregate_masking_cipher = DiscreteLogVTMF::<C>::mask(
@@ -106,18 +124,11 @@ impl<C: ProjectiveCurve> Proof<C> {
             DotProductCalculator::<C>::scalars_by_ciphers(&xm_minus_i_times_a, cipher_chunk).unwrap()
         }).sum();
 
-        assert_eq!(sum_e_k, aggregate_masking_cipher + verif_rhs); 
+        if sum_e_k != aggregate_masking_cipher + verif_rhs {
+            return Err(Error::MultiExpVerficationError);
+        }
 
         Ok(())
 
-    }
-}
-
-#[cfg(test)]
-mod test {
-
-    #[test]
-    fn verify_proof() {
-        
     }
 }

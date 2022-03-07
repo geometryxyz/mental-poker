@@ -175,7 +175,7 @@ pub trait HadamardProduct<C:ProjectiveCurve> {
 
     fn scalars_by_scalars(
         scalars_a: &Vec<Self::Scalar>,
-        scalar_b: &Vec<Self::Scalar>)
+        scalars_b: &Vec<Self::Scalar>)
         -> Result<Vec<Self::Scalar>, Error>;
 }
 
