@@ -1,23 +1,22 @@
 use ark_ec::ProjectiveCurve;
 use rand::Rng;
 
-
 //TODO add public key
 #[derive(Clone)]
 pub struct PublicConfig<C, const SIZE: usize>
-where 
-    C: ProjectiveCurve
+where
+    C: ProjectiveCurve,
 {
-    pub commit_key: Vec<C::Affine>
+    pub commit_key: Vec<C::Affine>,
 }
 
 impl<C, const SIZE: usize> PublicConfig<C, SIZE>
-where 
-    C: ProjectiveCurve
+where
+    C: ProjectiveCurve,
 {
     pub fn new<R: Rng>(public_randomess: &mut R) -> Self {
         Self {
-            commit_key: Self::generate_commit_key(public_randomess)
+            commit_key: Self::generate_commit_key(public_randomess),
         }
     }
     fn generate_commit_key<R: Rng>(public_randomess: &mut R) -> Vec<C::Affine> {

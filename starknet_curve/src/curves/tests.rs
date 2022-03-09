@@ -10,7 +10,7 @@ use ark_ec::{models::SWModelParameters, AffineCurve, PairingEngine, ProjectiveCu
 use ark_std::ops::{AddAssign, MulAssign};
 use ark_std::rand::Rng;
 
-use crate::{Affine, StarkwareParameters, Projective};
+use crate::{Affine, Projective, StarkwareParameters};
 
 use ark_algebra_test_templates::{
     curves::{curve_tests, sw_tests},

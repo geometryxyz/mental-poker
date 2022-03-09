@@ -24,5 +24,4 @@ impl TranscriptProtocol for Transcript {
         self.challenge_bytes(label, &mut buf);
         F::from_random_bytes(&buf).unwrap()
     }
-
 }

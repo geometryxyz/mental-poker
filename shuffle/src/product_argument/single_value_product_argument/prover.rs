@@ -1,55 +1,61 @@
 use ark_ec::ProjectiveCurve;
-use ark_ff::{Zero, One};
+use ark_ff::{One, Zero};
 
-use std::iter;
 use merlin::Transcript;
 use rand::Rng;
+use std::iter;
 
 use crate::{
-    utils::{
-        ScalarSampler, RandomSampler, PedersenCommitment, HomomorphicCommitment}, 
+    product_argument::single_value_product_argument::{
+        proof::Proof, Parameters, Statement, Witness,
+    },
     transcript::TranscriptProtocol,
-    product_argument::single_value_product_argument::{Statement, Witness, Parameters, proof::Proof},
+    utils::{HomomorphicCommitment, PedersenCommitment, RandomSampler, ScalarSampler},
 };
 
 pub struct Prover<'a, C>
-where 
+where
     C: ProjectiveCurve,
 {
     parameters: &'a Parameters<'a, C>,
     transcript: Transcript,
     statement: &'a Statement<C>,
-    witness: &'a Witness<'a, C>, 
+    witness: &'a Witness<'a, C>,
 }
 
-impl<'a, C> Prover<'a, C> 
-where   
-    C: ProjectiveCurve
+impl<'a, C> Prover<'a, C>
+where
+    C: ProjectiveCurve,
 {
     pub fn new(
         parameters: &'a Parameters<'a, C>,
         statement: &'a Statement<C>,
-        witness: &'a Witness<'a, C>
+        witness: &'a Witness<'a, C>,
     ) -> Self {
-
         Self {
-            parameters, 
+            parameters,
             transcript: Transcript::new(b"single_value_product_argument"),
-            statement, 
-            witness
+            statement,
+            witness,
         }
     }
-    
+
     pub fn prove<R: Rng>(&self, rng: &mut R) -> Proof<C> {
         let mut transcript = self.transcript.clone();
 
         // generate vector b
         let b: Vec<C::ScalarField> = iter::once(self.witness.a[0])
-        .chain(self.witness.a.iter().skip(1).scan(self.witness.a[0], |st, elem| {
-            *st *= elem;
-            Some(*st)
-        }))
-        .collect();
+            .chain(
+                self.witness
+                    .a
+                    .iter()
+                    .skip(1)
+                    .scan(self.witness.a[0], |st, elem| {
+                        *st *= elem;
+                        Some(*st)
+                    }),
+            )
+            .collect();
 
         let d = ScalarSampler::<C>::sample_vector(rng, self.parameters.n);
         let mut deltas = ScalarSampler::<C>::sample_vector(rng, self.parameters.n - 2);
@@ -66,25 +72,35 @@ where
         let d_commit = PedersenCommitment::<C>::commit_vector(&self.parameters.commit_key, &d, r_d);
 
         let minus_one = -C::ScalarField::one();
-        let delta_ds = deltas.iter().take(deltas.len() - 1).zip(d.iter().skip(1)).map(|(delta, d)| {
-            minus_one * delta * d
-        }).collect::<Vec<_>>();
+        let delta_ds = deltas
+            .iter()
+            .take(deltas.len() - 1)
+            .zip(d.iter().skip(1))
+            .map(|(delta, d)| minus_one * delta * d)
+            .collect::<Vec<_>>();
 
-        let delta_commit = PedersenCommitment::<C>::commit_vector(&self.parameters.commit_key, &delta_ds, s_1);
-
+        let delta_commit =
+            PedersenCommitment::<C>::commit_vector(&self.parameters.commit_key, &delta_ds, s_1);
 
         // skip frist a, skip first d, skip last b, and use all deltas
-        let diffs = self.witness.a.iter().skip(1)
+        let diffs = self
+            .witness
+            .a
+            .iter()
+            .skip(1)
             .zip(d.iter().skip(1))
             .zip(b.iter().take(b.len() - 1))
             .zip(deltas.iter().skip(1))
             .zip(deltas.iter().take(deltas.len() - 1))
-            .map(|((((&a_i, &d_i), &b_i_minus_one), &delta_i), &delta_i_minus_1)| {
-                delta_i + minus_one*a_i*delta_i_minus_1 + minus_one*b_i_minus_one*d_i
-            }).collect::<Vec<_>>();
+            .map(
+                |((((&a_i, &d_i), &b_i_minus_one), &delta_i), &delta_i_minus_1)| {
+                    delta_i + minus_one * a_i * delta_i_minus_1 + minus_one * b_i_minus_one * d_i
+                },
+            )
+            .collect::<Vec<_>>();
 
-
-        let diff_commit = PedersenCommitment::<C>::commit_vector(&self.parameters.commit_key, &diffs, s_x);
+        let diff_commit =
+            PedersenCommitment::<C>::commit_vector(&self.parameters.commit_key, &diffs, s_x);
 
         //public information
         transcript.append(b"commit_key", self.parameters.commit_key);
@@ -117,10 +133,16 @@ where
         }
     }
 
-    fn blind(x: &Vec<C::ScalarField>, blinders: &Vec<C::ScalarField>, challenge: C::ScalarField) -> Vec<C::ScalarField> {
-        let blinded = x.iter().zip(blinders.iter()).map(|(x, b)| {
-            challenge*x + b
-        }).collect::<Vec<C::ScalarField>>();
+    fn blind(
+        x: &Vec<C::ScalarField>,
+        blinders: &Vec<C::ScalarField>,
+        challenge: C::ScalarField,
+    ) -> Vec<C::ScalarField> {
+        let blinded = x
+            .iter()
+            .zip(blinders.iter())
+            .map(|(x, b)| challenge * x + b)
+            .collect::<Vec<C::ScalarField>>();
 
         blinded
     }

@@ -1,12 +1,11 @@
-use verifiable_threshold_masking_protocol::discrete_log_vtmp::{ElgamalCipher};
-use ark_ec::{ProjectiveCurve};
+use ark_ec::ProjectiveCurve;
+use verifiable_threshold_masking_protocol::discrete_log_vtmp::ElgamalCipher;
 
-pub mod prover;
 pub mod proof;
-
+pub mod prover;
 
 /// Parameters for the multi-exponentiation argument. Contains the encryption public key, a commitment key
-/// and a public group generator which will be used for masking. 
+/// and a public group generator which will be used for masking.
 pub struct Parameters<'a, C: ProjectiveCurve> {
     pub public_key: &'a C::Affine,
     pub commit_key: &'a Vec<C::Affine>,
@@ -14,33 +13,40 @@ pub struct Parameters<'a, C: ProjectiveCurve> {
 }
 
 impl<'a, C: ProjectiveCurve> Parameters<'a, C> {
-    pub fn new(public_key: &'a C::Affine, commit_key: &'a Vec<C::Affine>, masking_generator: C::Affine) -> Self {
+    pub fn new(
+        public_key: &'a C::Affine,
+        commit_key: &'a Vec<C::Affine>,
+        masking_generator: C::Affine,
+    ) -> Self {
         Self {
-            public_key, 
+            public_key,
             commit_key,
-            masking_generator
+            masking_generator,
         }
     }
 }
 
-/// Witness for the multi-exponentiation argument. Contains a hidden n-by-m matrix A, a vector of randoms r used to commit to 
+/// Witness for the multi-exponentiation argument. Contains a hidden n-by-m matrix A, a vector of randoms r used to commit to
 /// the columns of A and an aggregate re-encryption factor rho
 pub struct Witness<'a, C: ProjectiveCurve> {
     pub matrix_a: &'a Vec<Vec<C::ScalarField>>,
     pub matrix_blinders: &'a Vec<C::ScalarField>,
-    pub rho: C::ScalarField
+    pub rho: C::ScalarField,
 }
 
 impl<'a, C: ProjectiveCurve> Witness<'a, C> {
-    pub fn new(matrix_a: &'a Vec<Vec<C::ScalarField>>, matrix_blinders: &'a Vec<C::ScalarField>, rho: C::ScalarField) -> Self {
+    pub fn new(
+        matrix_a: &'a Vec<Vec<C::ScalarField>>,
+        matrix_blinders: &'a Vec<C::ScalarField>,
+        rho: C::ScalarField,
+    ) -> Self {
         Self {
-            matrix_a, 
-            matrix_blinders, 
-            rho
+            matrix_a,
+            matrix_blinders,
+            rho,
         }
     }
 }
-
 
 /// Statement for the multi-exponentiation argument. Contains an m-by-n matrix of ciphertexts matC, a ciphertext C
 /// and a vector of commitments to the columns of a hidden n-by-m matrix A (see `Witness`) such that:
@@ -48,15 +54,19 @@ impl<'a, C: ProjectiveCurve> Witness<'a, C> {
 pub struct Statement<'a, C: ProjectiveCurve> {
     pub shuffled_ciphers: &'a Vec<Vec<ElgamalCipher<C>>>,
     pub product: ElgamalCipher<C>,
-    pub commitments_to_exponents: &'a Vec<C>
+    pub commitments_to_exponents: &'a Vec<C>,
 }
 
 impl<'a, C: ProjectiveCurve> Statement<'a, C> {
-    pub fn new(shuffled_ciphers: &'a Vec<Vec<ElgamalCipher<C>>>, product: ElgamalCipher<C>, commitments_to_exponents: &'a Vec<C>) -> Self {
+    pub fn new(
+        shuffled_ciphers: &'a Vec<Vec<ElgamalCipher<C>>>,
+        product: ElgamalCipher<C>,
+        commitments_to_exponents: &'a Vec<C>,
+    ) -> Self {
         Self {
-            shuffled_ciphers, 
-            product, 
-            commitments_to_exponents
+            shuffled_ciphers,
+            product,
+            commitments_to_exponents,
         }
     }
 }
@@ -79,8 +89,8 @@ impl<'a, C: ProjectiveCurve> Statement<'a, C> {
 
 //     for d in 1..m {
 //         let additional_randomness = DotProductCalculator::<C>::scalars_by_ciphers(&a_0_randomness, &cipher_chunks[d-1]).unwrap();
-//         let mut tmp_product1 = ElgamalCipher::zero(); 
-//         let mut tmp_product2 = ElgamalCipher::zero(); 
+//         let mut tmp_product1 = ElgamalCipher::zero();
+//         let mut tmp_product2 = ElgamalCipher::zero();
 //         for i in d..m {
 //             let dot = DotProductCalculator::<C>::scalars_by_ciphers(&scalar_chunks[i - d], &cipher_chunks[i]).unwrap();
 //             tmp_product1 = tmp_product1 + dot;
@@ -92,15 +102,14 @@ impl<'a, C: ProjectiveCurve> Statement<'a, C> {
 //         diagonal_sums[center - d] = tmp_product1 + additional_randomness;
 //         diagonal_sums[center + d] = tmp_product2;
 //     }
-    
+
 //     diagonal_sums[center] = claimed_product;
 
 //     let zeroth_diagonal = DotProductCalculator::<C>::scalars_by_ciphers(&a_0_randomness, &cipher_chunks.last().unwrap()).unwrap();
 //     diagonal_sums.insert(0, zeroth_diagonal);
 
-//     Ok(diagonal_sums)  
+//     Ok(diagonal_sums)
 // }
-
 
 // #[cfg(test)]
 // mod test {
@@ -114,11 +123,10 @@ impl<'a, C: ProjectiveCurve> Statement<'a, C> {
 //     #[test]
 //     fn test_dot_product() {
 //         let rng = &mut thread_rng();
-        
+
 //         let c1 = ElgamalCipher::<Projective>(Projective::rand(rng).into(), Projective::rand(rng).into());
 //         let c2 = ElgamalCipher::<Projective>(Projective::rand(rng).into(), Projective::rand(rng).into());
 //         let c3 = ElgamalCipher::<Projective>(Projective::rand(rng).into(), Projective::rand(rng).into());
-
 
 //         let c = vec![c1, c2, c3];
 
@@ -152,11 +160,11 @@ impl<'a, C: ProjectiveCurve> Statement<'a, C> {
 //         let scalars_chunks = scalars.chunks(n).map(|c| c.to_vec()).collect::<Vec<_>>();
 
 //         let product = DotProductCalculator::<Projective>::scalars_by_ciphers(&scalars, &ciphers).unwrap();
-        
+
 //         let result = diagonals_from_chunks_for_testing::<Projective>(&cipher_chunks, &scalars_chunks, product, &random).unwrap();
 
 //         let manual_result = vec![
-//             test_cipher * (random[0] + random[1]), 
+//             test_cipher * (random[0] + random[1]),
 //             test_cipher * (random[0] + random[1] + scalars[0] + scalars[1]),
 //             test_cipher * (random[0] + random[1] + scalars[0] + scalars[1] + scalars[2] + scalars[3]),
 //             test_cipher * (scalars[0] + scalars[1] + scalars[2] + scalars[3] + scalars[4] + scalars[5]),

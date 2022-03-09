@@ -2,5 +2,5 @@
 pub enum Error {
     SetupError,
     KeyGenError,
-    MaskingError
+    MaskingError,
 }

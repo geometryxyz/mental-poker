@@ -1,22 +1,19 @@
-pub mod prover;
 pub mod proof;
+pub mod prover;
 pub mod tests;
 
-use ark_ec::{ProjectiveCurve};
+use ark_ec::ProjectiveCurve;
 // pub mod verifier;
 
 /// Parameters
 pub struct Parameters<'a, C: ProjectiveCurve> {
     pub commit_key: &'a Vec<C::Affine>,
-    pub n: usize
+    pub n: usize,
 }
 
 impl<'a, C: ProjectiveCurve> Parameters<'a, C> {
     pub fn new(n: usize, commit_key: &'a Vec<C::Affine>) -> Self {
-        Self {
-            commit_key,
-            n,
-        }
+        Self { commit_key, n }
     }
 }
 
@@ -27,13 +24,10 @@ pub struct Witness<'a, C: ProjectiveCurve> {
 }
 
 impl<'a, C: ProjectiveCurve> Witness<'a, C> {
-    pub fn new(
-        a: &'a Vec<C::ScalarField>,
-        random_for_a_commit: &'a C::ScalarField
-    ) -> Self {
+    pub fn new(a: &'a Vec<C::ScalarField>, random_for_a_commit: &'a C::ScalarField) -> Self {
         Self {
-            a, 
-            random_for_a_commit
+            a,
+            random_for_a_commit,
         }
     }
 }
@@ -46,9 +40,6 @@ pub struct Statement<C: ProjectiveCurve> {
 
 impl<'a, C: ProjectiveCurve> Statement<C> {
     pub fn new(a_commit: C, b: C::ScalarField) -> Self {
-        Self {
-            a_commit,
-            b
-        }
+        Self { a_commit, b }
     }
 }

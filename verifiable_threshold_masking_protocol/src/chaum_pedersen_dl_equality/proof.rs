@@ -1,13 +1,12 @@
-use crate::chaum_pedersen_dl_equality::{Parameters, error::Error, transcript::TranscriptProtocol};
+use crate::chaum_pedersen_dl_equality::{error::Error, transcript::TranscriptProtocol, Parameters};
 use crate::discrete_log_vtmp::ElgamalCipher;
 
-use ark_ec::{ProjectiveCurve, AffineCurve};
+use ark_ec::{AffineCurve, ProjectiveCurve};
 use merlin::Transcript;
 
-
-pub struct Proof<C> 
-where 
-    C: ProjectiveCurve
+pub struct Proof<C>
+where
+    C: ProjectiveCurve,
 {
     pub(crate) a: C,
     pub(crate) b: C,
@@ -15,7 +14,11 @@ where
 }
 
 impl<C: ProjectiveCurve> Proof<C> {
-    pub fn verify(&self, parameters: &Parameters<C>, statement: &ElgamalCipher<C>) -> Result<(), Error> {
+    pub fn verify(
+        &self,
+        parameters: &Parameters<C>,
+        statement: &ElgamalCipher<C>,
+    ) -> Result<(), Error> {
         let mut transcript = Transcript::new(b"chaum_pedersen");
 
         transcript.append(b"g", &parameters.g);
@@ -26,18 +29,16 @@ impl<C: ProjectiveCurve> Proof<C> {
         transcript.append(b"a", &self.a);
         transcript.append(b"b", &self.b);
 
-
         let c: C::ScalarField = transcript.challenge_scalar(b"c");
 
         // g * r ==? a + x*c
         if parameters.g.mul(self.r) != self.a + statement.0.mul(c) {
-            return Err(Error::VerificationError)
+            return Err(Error::VerificationError);
         }
-
 
         // h * r ==? b + y*c
         if parameters.h.mul(self.r) != self.b + statement.1.mul(c) {
-            return Err(Error::VerificationError)
+            return Err(Error::VerificationError);
         }
 
         Ok(())

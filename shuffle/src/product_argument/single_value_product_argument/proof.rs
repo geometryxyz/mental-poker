@@ -1,16 +1,16 @@
 use ark_ec::ProjectiveCurve;
-use ark_ff::{PrimeField};
+use ark_ff::PrimeField;
 
-use merlin::Transcript;
 use crate::transcript::TranscriptProtocol;
+use merlin::Transcript;
 
-use crate::utils::{HomomorphicCommitment, PedersenCommitment};
 use crate::error::Error;
-use crate::product_argument::single_value_product_argument::{Statement, Parameters};
+use crate::product_argument::single_value_product_argument::{Parameters, Statement};
+use crate::utils::{HomomorphicCommitment, PedersenCommitment};
 
-pub struct Proof<C> 
-where 
-    C: ProjectiveCurve
+pub struct Proof<C>
+where
+    C: ProjectiveCurve,
 {
     // round 1
     pub(crate) d_commit: C,
@@ -24,11 +24,15 @@ where
     pub(crate) s_blinded: C::ScalarField,
 }
 
-impl<C> Proof<C> 
-    where
-        C: ProjectiveCurve
+impl<C> Proof<C>
+where
+    C: ProjectiveCurve,
 {
-    pub fn verify(&self, proof_parameters: &Parameters<C>, statement: &Statement<C>) -> Result<(), Error> {
+    pub fn verify(
+        &self,
+        proof_parameters: &Parameters<C>,
+        statement: &Statement<C>,
+    ) -> Result<(), Error> {
         if self.b_blinded.len() != proof_parameters.n {
             return Err(Error::SingleValueProductVerificationError);
         }
@@ -57,23 +61,33 @@ impl<C> Proof<C>
 
         // verify that blinded a is correctly formed
         let left = statement.a_commit.mul(x.into_repr()) + self.d_commit;
-        let right = PedersenCommitment::<C>::commit_vector(proof_parameters.commit_key, &self.a_blinded, self.r_blinded);
+        let right = PedersenCommitment::<C>::commit_vector(
+            proof_parameters.commit_key,
+            &self.a_blinded,
+            self.r_blinded,
+        );
         if left != right {
             return Err(Error::SingleValueProductVerificationError);
         }
 
         //verify that diffs are correctly formed
         let left = self.diff_commit.mul(x.into_repr()) + self.delta_commit;
-        let blinded_diffs = self.b_blinded.iter().skip(1)
+        let blinded_diffs = self
+            .b_blinded
+            .iter()
+            .skip(1)
             .zip(self.b_blinded.iter().take(self.b_blinded.len() - 1))
             .zip(self.a_blinded.iter().skip(1))
-            .map(|((&b, &b_minus_one), &a)| {
-                x*b - b_minus_one*a
-            }).collect::<Vec<_>>();
+            .map(|((&b, &b_minus_one), &a)| x * b - b_minus_one * a)
+            .collect::<Vec<_>>();
 
-        let right = PedersenCommitment::<C>::commit_vector(proof_parameters.commit_key, &blinded_diffs, self.s_blinded);
+        let right = PedersenCommitment::<C>::commit_vector(
+            proof_parameters.commit_key,
+            &blinded_diffs,
+            self.s_blinded,
+        );
         if left != right {
-            return Err(Error::SingleValueProductVerificationError)
+            return Err(Error::SingleValueProductVerificationError);
         }
 
         Ok(())

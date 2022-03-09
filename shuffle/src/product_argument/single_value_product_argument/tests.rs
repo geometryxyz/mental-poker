@@ -1,17 +1,22 @@
 #[cfg(test)]
 
 mod test {
-    use crate::{
-        utils::{RandomSampler, ScalarSampler, HomomorphicCommitment, PedersenCommitment},
-        error::Error,
+    use crate::product_argument::single_value_product_argument::{
+        prover::Prover, Parameters, Statement, Witness,
     };
-    use ark_ec::{ProjectiveCurve};
-    use starknet_curve::{Projective, Fr};
-    use ark_std::rand::{thread_rng};
-    use crate::product_argument::single_value_product_argument::{prover::Prover, Statement, Parameters, Witness};
+    use crate::{
+        error::Error,
+        utils::{HomomorphicCommitment, PedersenCommitment, RandomSampler, ScalarSampler},
+    };
+    use ark_ec::ProjectiveCurve;
+    use ark_std::rand::thread_rng;
     use rand::Rng;
+    use starknet_curve::{Fr, Projective};
 
-    fn generate_commit_key<R: Rng, C: ProjectiveCurve>(public_randomess: &mut R, len: &usize) -> Vec<C::Affine> {
+    fn generate_commit_key<R: Rng, C: ProjectiveCurve>(
+        public_randomess: &mut R,
+        len: &usize,
+    ) -> Vec<C::Affine> {
         let mut commit_key = Vec::with_capacity(len + 1);
         let mut base = C::rand(public_randomess);
         for _ in 0..len + 1 {
@@ -21,7 +26,7 @@ mod test {
         commit_key
     }
 
-    #[test] 
+    #[test]
     fn test_single_product_argument() {
         let n = 52;
         let rng = &mut thread_rng();
@@ -39,13 +44,16 @@ mod test {
 
         let honest_prover = Prover::<Projective>::new(&parameters, &statement, &witness);
         let valid_proof = honest_prover.prove(rng);
-        
+
         assert_eq!(Ok(()), valid_proof.verify(&parameters, &statement));
 
         a[0] = a[0] + a[0];
         let bad_witness = Witness::<Projective>::new(&a, &r);
         let malicious_prover = Prover::new(&parameters, &statement, &bad_witness);
         let invalid_proof = malicious_prover.prove(rng);
-        assert_eq!(Err(Error::SingleValueProductVerificationError), invalid_proof.verify(&parameters, &statement));
+        assert_eq!(
+            Err(Error::SingleValueProductVerificationError),
+            invalid_proof.verify(&parameters, &statement)
+        );
     }
 }

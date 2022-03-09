@@ -1,28 +1,30 @@
-use crate::chaum_pedersen_dl_equality::{Parameters, transcript::TranscriptProtocol, proof::Proof};
+use crate::chaum_pedersen_dl_equality::{proof::Proof, transcript::TranscriptProtocol, Parameters};
 use crate::discrete_log_vtmp::ElgamalCipher;
 
-use ark_ec::{ProjectiveCurve, AffineCurve};
-use ark_ff::{PrimeField};
+use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ff::PrimeField;
 use ark_std::rand::thread_rng;
-use ark_std::{UniformRand};
+use ark_std::UniformRand;
 use merlin::Transcript;
 
 use std::marker::PhantomData;
 
-
-
-pub struct Prover<C> 
-where 
-    C: ProjectiveCurve
+pub struct Prover<C>
+where
+    C: ProjectiveCurve,
 {
-    phantom: PhantomData<C>
+    phantom: PhantomData<C>,
 }
 
-impl<C> Prover<C> 
-where   
-    C: ProjectiveCurve
+impl<C> Prover<C>
+where
+    C: ProjectiveCurve,
 {
-    pub fn create_proof(parameters: &Parameters<C>, statement: &ElgamalCipher<C>, secret: C::ScalarField) -> Proof<C> {
+    pub fn create_proof(
+        parameters: &Parameters<C>,
+        statement: &ElgamalCipher<C>,
+        secret: C::ScalarField,
+    ) -> Proof<C> {
         let mut transcript = Transcript::new(b"chaum_pedersen");
         transcript.append(b"g", &parameters.g);
         transcript.append(b"h", &parameters.h);
@@ -41,11 +43,7 @@ where
         let c: C::ScalarField = transcript.challenge_scalar(b"c");
 
         let r = omega + c * secret;
-        
-        Proof {
-            a, 
-            b,
-            r
-        }
+
+        Proof { a, b, r }
     }
 }

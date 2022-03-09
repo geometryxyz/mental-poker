@@ -1,31 +1,28 @@
-use crate::schnorr_identification::{Parameters, transcript::TranscriptProtocol, proof::Proof};
+use crate::schnorr_identification::{proof::Proof, transcript::TranscriptProtocol, Parameters};
 
-use ark_ec::{ProjectiveCurve, AffineCurve};
-use ark_ff::{PrimeField};
+use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ff::PrimeField;
 use ark_std::rand::thread_rng;
-use ark_std::{UniformRand};
+use ark_std::UniformRand;
 use merlin::Transcript;
 
 use std::marker::PhantomData;
 
-
-
-pub struct Prover<C> 
-where 
-    C: ProjectiveCurve
+pub struct Prover<C>
+where
+    C: ProjectiveCurve,
 {
-    phantom: PhantomData<C>
+    phantom: PhantomData<C>,
 }
 
-impl<C> Prover<C> 
-where   
-    C: ProjectiveCurve
+impl<C> Prover<C>
+where
+    C: ProjectiveCurve,
 {
     pub fn create_proof(pp: &Parameters<C>, pk: &<C>::Affine, sk: C::ScalarField) -> Proof<C> {
         let mut transcript = Transcript::new(b"schnorr_identity");
         transcript.append(b"public_generator", &pp.generator);
         transcript.append(b"public_key", pk);
-
 
         let rng = &mut thread_rng();
         let witness = C::ScalarField::rand(rng);
@@ -37,11 +34,6 @@ where
 
         let opening = witness - c * sk;
 
-        let proof = Proof {
-            w_commit, 
-            opening
-        };
-
-        proof
+        Proof { w_commit, opening }
     }
 }

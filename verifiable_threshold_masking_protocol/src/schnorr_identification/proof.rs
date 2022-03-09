@@ -1,13 +1,12 @@
-use crate::schnorr_identification::{Parameters, error::Error, transcript::TranscriptProtocol};
-use ark_ff::{PrimeField};
+use crate::schnorr_identification::{error::Error, transcript::TranscriptProtocol, Parameters};
+use ark_ff::PrimeField;
 
-use ark_ec::{ProjectiveCurve, AffineCurve};
+use ark_ec::{AffineCurve, ProjectiveCurve};
 use merlin::Transcript;
 
-
-pub struct Proof<C> 
-where 
-    C: ProjectiveCurve
+pub struct Proof<C>
+where
+    C: ProjectiveCurve,
 {
     pub(crate) w_commit: C,
     pub(crate) opening: C::ScalarField,
@@ -24,7 +23,7 @@ impl<C: ProjectiveCurve> Proof<C> {
         let c: C::ScalarField = transcript.challenge_scalar(b"c");
 
         if pp.generator.mul(self.opening.into_repr()) + pk.mul(c.into_repr()) != self.w_commit {
-            return Err(Error::VerificationError)
+            return Err(Error::VerificationError);
         }
 
         Ok(())
@@ -33,12 +32,12 @@ impl<C: ProjectiveCurve> Proof<C> {
 
 #[cfg(test)]
 mod test {
-    
-    use ark_ec::{ProjectiveCurve, AffineCurve};
-    use ark_std::{rand::{thread_rng}};
-    use ark_std::{UniformRand};
-    use starknet_curve::{Projective, Fr};
+
     use crate::schnorr_identification::{prover::Prover, Parameters};
+    use ark_ec::{AffineCurve, ProjectiveCurve};
+    use ark_std::rand::thread_rng;
+    use ark_std::UniformRand;
+    use starknet_curve::{Fr, Projective};
 
     #[test]
     fn test_honest_prover() {
@@ -46,9 +45,7 @@ mod test {
 
         let generator = Projective::rand(&mut rng).into_affine();
 
-        let parameters = Parameters::<Projective> {
-            generator, 
-        };
+        let parameters = Parameters::<Projective> { generator };
 
         let secret = Fr::rand(&mut rng);
         let pk = generator.mul(secret).into_affine();
@@ -64,15 +61,14 @@ mod test {
 
         let generator = Projective::rand(&mut rng).into_affine();
 
-        let parameters = Parameters::<Projective> {
-            generator, 
-        };
+        let parameters = Parameters::<Projective> { generator };
 
         let secret = Fr::rand(&mut rng);
         let statement = generator.mul(secret).into_affine();
 
         let another_scalar = Fr::rand(&mut rng);
-        let proof = Prover::<Projective>::create_proof(&parameters, &statement.into(), another_scalar);
+        let proof =
+            Prover::<Projective>::create_proof(&parameters, &statement.into(), another_scalar);
 
         assert_ne!(proof.verify(&parameters, &statement.into()), Ok(()));
     }

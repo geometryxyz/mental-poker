@@ -1,23 +1,22 @@
 pub mod config;
-pub mod utils;
 pub mod error;
-pub mod transcript;
 pub mod tests;
+pub mod transcript;
+pub mod utils;
 
-pub mod prover;
 pub mod proof;
+pub mod prover;
 
 pub mod multi_exponent_argument;
 pub mod product_argument;
 
-use ark_ec::{ProjectiveCurve};
-use verifiable_threshold_masking_protocol::discrete_log_vtmp::{ElgamalCipher};
-use rand::{Rng, seq::SliceRandom};
-
+use ark_ec::ProjectiveCurve;
+use rand::{seq::SliceRandom, Rng};
+use verifiable_threshold_masking_protocol::discrete_log_vtmp::ElgamalCipher;
 
 pub struct Permutation {
     pub mapping: Vec<usize>,
-    pub size: usize
+    pub size: usize,
 }
 
 impl Permutation {
@@ -27,33 +26,30 @@ impl Permutation {
             mapping.push(i);
         }
         mapping.shuffle(rng);
-        Self {
-            mapping, 
-            size
-        }
+        Self { mapping, size }
     }
 
     pub fn from(permutation_vec: &Vec<usize>) -> Self {
         Self {
             mapping: permutation_vec[..].to_vec(),
-            size: permutation_vec.len()
+            size: permutation_vec.len(),
         }
     }
 
     pub fn identity(size: usize) -> Self {
         Self {
             mapping: (0..size).collect(),
-            size: size
+            size: size,
         }
     }
 
     pub fn permute_array<T: Copy>(&self, input_vector: &Vec<T>) -> Vec<T> {
-        self.mapping.iter().map(|&pi_i| {
-            input_vector[pi_i]
-        }).collect::<Vec<T>>()
+        self.mapping
+            .iter()
+            .map(|&pi_i| input_vector[pi_i])
+            .collect::<Vec<T>>()
     }
 }
-
 
 /// Parameters for the product argument
 pub struct Parameters<'a, C: ProjectiveCurve> {
@@ -79,12 +75,17 @@ pub struct Statement<'a, C: ProjectiveCurve> {
 }
 
 impl<'a, C: ProjectiveCurve> Statement<'a, C> {
-    pub fn new(input_ciphers: &'a Vec<ElgamalCipher<C>>, shuffled_ciphers: &'a Vec<ElgamalCipher<C>>, m: usize, n: usize) -> Self {
+    pub fn new(
+        input_ciphers: &'a Vec<ElgamalCipher<C>>,
+        shuffled_ciphers: &'a Vec<ElgamalCipher<C>>,
+        m: usize,
+        n: usize,
+    ) -> Self {
         Self {
-            input_ciphers, 
+            input_ciphers,
             shuffled_ciphers,
             m,
-            n
+            n,
         }
     }
 }
@@ -93,13 +94,10 @@ impl<'a, C: ProjectiveCurve> Statement<'a, C> {
 pub struct Witness<'a, C: ProjectiveCurve> {
     pub permutation: &'a Permutation,
     pub rho: &'a Vec<C::ScalarField>,
-    }
+}
 
-    impl<'a, C: ProjectiveCurve> Witness<'a, C> {
+impl<'a, C: ProjectiveCurve> Witness<'a, C> {
     pub fn new(permutation: &'a Permutation, rho: &'a Vec<C::ScalarField>) -> Self {
-        Self {
-            permutation,
-            rho
-        }
+        Self { permutation, rho }
     }
 }
