@@ -1,20 +1,20 @@
 use ark_ec::ProjectiveCurve;
-use verifiable_threshold_masking_protocol::discrete_log_vtmp::ElgamalCipher;
+use crypto_primitives::homomorphic_encryption::{HomomorphicEncryptionScheme, el_gamal::ElGamal};
 
 pub mod proof;
 pub mod prover;
 
 /// Parameters for the multi-exponentiation argument. Contains the encryption public key, a commitment key
 /// and a public group generator which will be used for masking.
-pub struct Parameters<'a, C: ProjectiveCurve> {
-    pub public_key: &'a C::Affine,
+pub struct Parameters<'a, C: ProjectiveCurve, EncryptionScheme: HomomorphicEncryptionScheme> {
+    pub public_key: &'a EncryptionScheme::PublicKey,
     pub commit_key: &'a Vec<C::Affine>,
     pub masking_generator: C::Affine,
 }
 
-impl<'a, C: ProjectiveCurve> Parameters<'a, C> {
+impl<'a, C: ProjectiveCurve, EncryptionScheme: HomomorphicEncryptionScheme> Parameters<'a, C, EncryptionScheme> {
     pub fn new(
-        public_key: &'a C::Affine,
+        public_key: &'a EncryptionScheme::PublicKey,
         commit_key: &'a Vec<C::Affine>,
         masking_generator: C::Affine,
     ) -> Self {

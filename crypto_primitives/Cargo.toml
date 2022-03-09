@@ -1,18 +1,15 @@
 [package]
-name = "shuffle"
+name = "crypto_primitives"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ark-crypto-primitives = "0.3.0"
 ark-std = { version = "0.3.0", features = ["std"] }
 ark-serialize = "0.3.0"
+ark-crypto-primitives = "0.3.0"
 ark-ec = "0.3.0"
 ark-ff = "0.3.0"
 rand = "0.8.4"
-merlin = "3.0.0"
 starknet_curve = { path = "../starknet_curve" }
-verifiable_threshold_masking_protocol = { path = "../verifiable_threshold_masking_protocol" }
-crypto_primitives = { path = "../crypto_primitives" }

@@ -1,5 +1,4 @@
 use crate::chaum_pedersen_dl_equality::{error::Error, transcript::TranscriptProtocol, Parameters};
-use crate::discrete_log_vtmp::ElgamalCipher;
 
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use merlin::Transcript;

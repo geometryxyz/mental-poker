@@ -11,34 +11,31 @@ use crate::{
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use std::iter;
 use std::marker::PhantomData;
-use verifiable_threshold_masking_protocol::discrete_log_vtmp::{
-    DiscreteLogVTMF, ElgamalCipher, VerifiableThresholdMaskingProtocol,
-};
 
 use ark_crypto_primitives::encryption::{
     elgamal::{Parameters as ElGamalParameters, Randomness},
-    AsymmetricEncryptionScheme,
 };
 use ark_ff::{One, Zero};
 use merlin::Transcript;
 use rand::Rng;
+use crypto_primitives::homomorphic_encryption::{HomomorphicEncryptionScheme, el_gamal::ElGamal};
 
-pub struct Prover<'a, C, EncryptionScheme: AsymmetricEncryptionScheme>
+pub struct Prover<'a, C, EncryptionScheme: HomomorphicEncryptionScheme>
 where
     C: ProjectiveCurve,
 {
-    parameters: &'a Parameters<'a, C>,
+    parameters: &'a Parameters<'a, C, EncryptionScheme>,
     transcript: Transcript,
     statement: &'a Statement<'a, C>,
     witness: &'a Witness<'a, C>,
     _scheme: PhantomData<EncryptionScheme>,
 }
 
-impl<'a, C: ProjectiveCurve, EncryptionScheme: AsymmetricEncryptionScheme>
+impl<'a, C: ProjectiveCurve, EncryptionScheme: HomomorphicEncryptionScheme>
     Prover<'a, C, EncryptionScheme>
 {
     pub fn new(
-        parameters: &'a Parameters<'a, C>,
+        parameters: &'a Parameters<'a, C, EncryptionScheme>,
         statement: &'a Statement<'a, C>,
         witness: &'a Witness<'a, C>,
     ) -> Self {
@@ -55,7 +52,7 @@ impl<'a, C: ProjectiveCurve, EncryptionScheme: AsymmetricEncryptionScheme>
     pub fn prove<R: Rng>(
         &self,
         rng: &mut R,
-        encryption_parameters: &ElGamalParameters<C>,
+        encryption_parameters: &EncryptionScheme::Parameters,
     ) -> Proof<C> {
         let mut transcript = self.transcript.clone();
 
@@ -116,12 +113,14 @@ impl<'a, C: ProjectiveCurve, EncryptionScheme: AsymmetricEncryptionScheme>
             .zip(tau.iter())
             .zip(diagonals.iter())
             .map(|((b_k, tau_k), d_k)| {
-                let encrypted_random = DiscreteLogVTMF::<C>::mask(
-                    encryption_parameters,
-                    self.parameters.public_key,
-                    &self.parameters.masking_generator.mul(*b_k).into_affine(),
-                    &Randomness::<C>(*tau_k),
-                );
+                let encrypted_random = EncryptionScheme::encrypt(&encryption_parameters, self.parameters.public_key, message: &Self::Plaintext, r: &Self::Scalar)
+
+                // let encrypted_random = DiscreteLogVTMF::<C>::mask(
+                //     encryption_parameters,
+                //     self.parameters.public_key,
+                //     &self.parameters.masking_generator.mul(*b_k).into_affine(),
+                //     &Randomness::<C>(*tau_k),
+                // );
                 encrypted_random.unwrap() + *d_k
             })
             .collect::<Vec<ElgamalCipher<C>>>();
