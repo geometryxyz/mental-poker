@@ -6,6 +6,7 @@ pub mod proof;
 pub mod prover;
 pub mod tests;
 
+use crate::error::Error;
 use ark_ec::ProjectiveCurve;
 
 /// Parameters for the product argument
@@ -21,7 +22,7 @@ impl<'a, C: ProjectiveCurve> Parameters<'a, C> {
     }
 }
 
-/// Witness for the product argument. Contains a matrix A for which we want to claim the product b (see `Statement`)
+/// Witness for the product argument. Contains a matrix A for which we want to claim the product b (see [Statement])
 /// and randoms which will have been used to commit to each column of A.
 pub struct Witness<'a, C: ProjectiveCurve> {
     pub matrix_a: &'a Vec<Vec<C::ScalarField>>,
@@ -40,7 +41,7 @@ impl<'a, C: ProjectiveCurve> Witness<'a, C> {
     }
 }
 
-/// Statement for the product argument. Contains a vector of commitments to the columns of matrix A (see `Witness`)
+/// Statement for the product argument. Contains a vector of commitments to the columns of matrix A (see [Witness])
 /// and a scalar b which is claimed to be the product of all the cells in A.
 pub struct Statement<'a, C: ProjectiveCurve> {
     pub commitments_to_a: &'a Vec<C>,
@@ -53,5 +54,12 @@ impl<'a, C: ProjectiveCurve> Statement<'a, C> {
             commitments_to_a,
             b,
         }
+    }
+
+    pub fn is_valid(&self, parameters: &Parameters<C>) -> Result<(), Error> {
+        if self.commitments_to_a.len() != parameters.m {
+            return Err(Error::InvalidProductArgumentStatement);
+        }
+        Ok(())
     }
 }

@@ -22,6 +22,8 @@ where
         proof_parameters: &Parameters<C>,
         statement: &Statement<C>,
     ) -> Result<(), Error> {
+        statement.is_valid(proof_parameters)?;
+
         // Verifiy hadamrd product argument
         let hadamard_product_parameters = hadamard_product_argument::Parameters::<C>::new(
             proof_parameters.m,

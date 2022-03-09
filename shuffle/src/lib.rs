@@ -1,5 +1,8 @@
+#![crate_name = "shuffle"]
+
 pub mod config;
 pub mod error;
+pub mod permutation;
 pub mod tests;
 pub mod transcript;
 pub mod utils;
@@ -10,46 +13,10 @@ pub mod prover;
 pub mod multi_exponent_argument;
 pub mod product_argument;
 
+use crate::error::Error;
+use crate::permutation::Permutation;
 use ark_ec::ProjectiveCurve;
-use rand::{seq::SliceRandom, Rng};
 use verifiable_threshold_masking_protocol::discrete_log_vtmp::ElgamalCipher;
-
-pub struct Permutation {
-    pub mapping: Vec<usize>,
-    pub size: usize,
-}
-
-impl Permutation {
-    pub fn new<R: Rng>(rng: &mut R, size: usize) -> Self {
-        let mut mapping: Vec<usize> = Vec::with_capacity(size);
-        for i in 0..size {
-            mapping.push(i);
-        }
-        mapping.shuffle(rng);
-        Self { mapping, size }
-    }
-
-    pub fn from(permutation_vec: &Vec<usize>) -> Self {
-        Self {
-            mapping: permutation_vec[..].to_vec(),
-            size: permutation_vec.len(),
-        }
-    }
-
-    pub fn identity(size: usize) -> Self {
-        Self {
-            mapping: (0..size).collect(),
-            size: size,
-        }
-    }
-
-    pub fn permute_array<T: Copy>(&self, input_vector: &Vec<T>) -> Vec<T> {
-        self.mapping
-            .iter()
-            .map(|&pi_i| input_vector[pi_i])
-            .collect::<Vec<T>>()
-    }
-}
 
 /// Parameters for the product argument
 pub struct Parameters<'a, C: ProjectiveCurve> {
@@ -66,7 +33,7 @@ impl<'a, C: ProjectiveCurve> Parameters<'a, C> {
     }
 }
 
-/// Statement of a shuffle. Contains the input ciphertexts, the output ciphertexts and the matric dimensions
+/// Statement of a shuffle. Contains the input ciphertexts, the output ciphertexts and the matrix dimensions
 pub struct Statement<'a, C: ProjectiveCurve> {
     pub input_ciphers: &'a Vec<ElgamalCipher<C>>,
     pub shuffled_ciphers: &'a Vec<ElgamalCipher<C>>,
@@ -87,6 +54,17 @@ impl<'a, C: ProjectiveCurve> Statement<'a, C> {
             m,
             n,
         }
+    }
+
+    pub fn is_valid(&self) -> Result<(), Error> {
+        if self.input_ciphers.len() != self.shuffled_ciphers.len()
+            || self.input_ciphers.len() != self.m * self.n
+            || self.shuffled_ciphers.len() != self.m * self.n
+        {
+            return Err(Error::InvalidShuffleStatement);
+        }
+
+        Ok(())
     }
 }
 

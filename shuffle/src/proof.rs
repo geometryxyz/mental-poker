@@ -32,6 +32,8 @@ where
         statement: &Statement<C>,
         encryption_parameters: &ElGamalParameters<C>,
     ) -> Result<(), Error> {
+        statement.is_valid()?;
+
         let mut transcript = Transcript::new(b"shuffle_argument");
         // Public data
         transcript.append(b"public_key", proof_parameters.public_key);
