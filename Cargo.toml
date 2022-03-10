@@ -1,8 +1,7 @@
 [workspace]
 
 members = [
+    "card_protocol",
     "crypto_primitives",
     "starknet_curve",
-    "shuffle",
-    "verifiable_threshold_masking_protocol"
 ]
