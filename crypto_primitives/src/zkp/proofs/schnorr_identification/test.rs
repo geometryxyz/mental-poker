@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test {
 
-    use crate::error::Error;
+    use crate::error::CryptoError;
     use crate::zkp::proofs::schnorr_identification;
     use crate::zkp::proofs::schnorr_identification::SchnorrIdentification;
     use crate::zkp::ArgumentOfKnowledge;
@@ -57,7 +57,9 @@ mod test {
                 &statement,
                 &invalid_proof
             ),
-            Err(Error::VerificationError)
+            Err(CryptoError::ProofVerificationError(String::from(
+                "Schnorr Identification"
+            )))
         );
     }
 }

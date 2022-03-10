@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::CryptoError;
 use crate::homomorphic_encryption::HomomorphicEncryptionScheme;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{fields::PrimeField, UniformRand};
@@ -85,7 +85,7 @@ where
     type Plaintext = Plaintext<C>;
     type Ciphertext = Ciphertext<C>;
 
-    fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
+    fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, CryptoError> {
         // get a random generator
         let generator = C::rand(rng).into();
 
@@ -95,7 +95,7 @@ where
     fn keygen<R: Rng>(
         pp: &Self::Parameters,
         rng: &mut R,
-    ) -> Result<(Self::PublicKey, Self::SecretKey), Error> {
+    ) -> Result<(Self::PublicKey, Self::SecretKey), CryptoError> {
         // get a random element from the scalar field
         let secret_key: <C as ProjectiveCurve>::ScalarField = C::ScalarField::rand(rng);
 
@@ -110,7 +110,7 @@ where
         pk: &Self::PublicKey,
         message: &Self::Plaintext,
         r: &Self::Randomness,
-    ) -> Result<Self::Ciphertext, Error> {
+    ) -> Result<Self::Ciphertext, CryptoError> {
         // compute s = r*pk
         let s = pk.mul(r.into_repr()).into();
 
@@ -127,7 +127,7 @@ where
         _pp: &Self::Parameters,
         sk: &Self::SecretKey,
         ciphertext: &Self::Ciphertext,
-    ) -> Result<Self::Plaintext, Error> {
+    ) -> Result<Self::Plaintext, CryptoError> {
         let c1: <C as ProjectiveCurve>::Affine = ciphertext.0;
         let c2: <C as ProjectiveCurve>::Affine = ciphertext.1;
 

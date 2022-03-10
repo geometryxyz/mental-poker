@@ -1,8 +1,8 @@
 pub mod proof;
 pub mod prover;
-pub mod test;
+mod test;
 
-use crate::error::Error;
+use crate::error::CryptoError;
 use crate::zkp::ArgumentOfKnowledge;
 use ark_ec::ProjectiveCurve;
 use ark_std::marker::PhantomData;
@@ -52,7 +52,7 @@ impl<'a, C: ProjectiveCurve> ArgumentOfKnowledge for SchnorrIdentification<'a, C
     type Witness = Witness<'a, C>;
     type Proof = proof::Proof<C>;
 
-    fn setup<R: Rng>(rng: &mut R) -> Result<Self::CommonReferenceString, Error> {
+    fn setup<R: Rng>(rng: &mut R) -> Result<Self::CommonReferenceString, CryptoError> {
         let generator = C::rand(rng).into_affine();
         let parameters = Parameters::<C>::new(generator);
 
@@ -63,7 +63,7 @@ impl<'a, C: ProjectiveCurve> ArgumentOfKnowledge for SchnorrIdentification<'a, C
         common_reference_string: &Self::CommonReferenceString,
         statement: &Self::Statement,
         witness: &Self::Witness,
-    ) -> Result<Self::Proof, Error> {
+    ) -> Result<Self::Proof, CryptoError> {
         Ok(prover::Prover::create_proof(
             common_reference_string,
             statement,
@@ -75,7 +75,7 @@ impl<'a, C: ProjectiveCurve> ArgumentOfKnowledge for SchnorrIdentification<'a, C
         common_reference_string: &Self::CommonReferenceString,
         statement: &Self::Statement,
         proof: &Self::Proof,
-    ) -> Result<(), Error> {
+    ) -> Result<(), CryptoError> {
         proof.verify(common_reference_string, statement)
     }
 }

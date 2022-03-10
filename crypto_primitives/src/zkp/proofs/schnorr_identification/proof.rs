@@ -2,7 +2,7 @@ use crate::zkp::transcript::TranscriptProtocol;
 use ark_ff::PrimeField;
 
 use super::{Parameters, Statement};
-use crate::error::Error;
+use crate::error::CryptoError;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use merlin::Transcript;
 
@@ -15,7 +15,7 @@ where
 }
 
 impl<C: ProjectiveCurve> Proof<C> {
-    pub fn verify(&self, pp: &Parameters<C>, statement: &Statement<C>) -> Result<(), Error> {
+    pub fn verify(&self, pp: &Parameters<C>, statement: &Statement<C>) -> Result<(), CryptoError> {
         let mut transcript = Transcript::new(b"schnorr_identity");
 
         transcript.append(b"public_generator", &pp.generator);
@@ -27,7 +27,9 @@ impl<C: ProjectiveCurve> Proof<C> {
         if pp.generator.mul(self.opening.into_repr()) + statement.statement.mul(c.into_repr())
             != self.random_commit
         {
-            return Err(Error::VerificationError);
+            return Err(CryptoError::ProofVerificationError(String::from(
+                "Schnorr Identification",
+            )));
         }
 
         Ok(())
