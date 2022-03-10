@@ -1,6 +1,6 @@
 use ark_std::rand::Rng;
 use crypto_primitives::homomorphic_encryption::HomomorphicEncryptionScheme;
-use crypto_primitives::permutation::Permutation;
+use utils::permutation::Permutation;
 
 pub mod discrete_log_vtmp;
 use anyhow::Result;

@@ -9,7 +9,6 @@ use ark_std::{One, Zero};
 use crypto_primitives::homomorphic_encryption::{
     el_gamal, el_gamal::ElGamal, HomomorphicEncryptionScheme, MulByScalar,
 };
-use crypto_primitives::permutation::Permutation;
 use crypto_primitives::zkp::proofs::{
     chaum_pedersen_dl_equality, chaum_pedersen_dl_equality::DLEquality,
 };
@@ -19,6 +18,7 @@ use crypto_primitives::zkp::proofs::{
 use crypto_primitives::zkp::ArgumentOfKnowledge;
 use std::iter::Iterator;
 use std::marker::PhantomData;
+use utils::permutation::Permutation;
 
 pub struct DiscreteLogVTMF<'a, C: ProjectiveCurve> {
     _group: &'a PhantomData<C>,

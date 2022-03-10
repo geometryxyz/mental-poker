@@ -4,4 +4,5 @@ members = [
     "card_protocol",
     "crypto_primitives",
     "starknet_curve",
+    "utils"
 ]

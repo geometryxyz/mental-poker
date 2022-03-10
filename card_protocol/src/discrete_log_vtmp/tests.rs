@@ -5,17 +5,15 @@ mod test {
     use ark_ec::{AffineCurve, ProjectiveCurve};
     use ark_ff::One;
     use ark_std::{test_rng, UniformRand, Zero};
-    use crypto_primitives::zkp::proofs::chaum_pedersen_dl_equality;
-    use crypto_primitives::{
-        homomorphic_encryption::{
-            el_gamal::{Ciphertext, Randomness},
-            MulByScalar,
-        },
-        permutation::Permutation,
+    use crypto_primitives::homomorphic_encryption::{
+        el_gamal::{Ciphertext, Randomness},
+        MulByScalar,
     };
+    use crypto_primitives::zkp::proofs::chaum_pedersen_dl_equality;
     use rand::thread_rng;
     use starknet_curve::{Affine, Fr, Projective};
     use std::iter::Iterator;
+    use utils::permutation::Permutation;
 
     #[test]
     fn n_of_n_threshold_decryption_test() {
