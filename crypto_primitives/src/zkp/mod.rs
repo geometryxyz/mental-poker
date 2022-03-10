@@ -1,6 +1,9 @@
 use crate::error::Error;
 use ark_std::rand::Rng;
 
+pub mod arguments;
+pub mod proofs;
+pub mod transcript;
 pub mod utils;
 
 pub trait ArgumentOfKnowledge {
