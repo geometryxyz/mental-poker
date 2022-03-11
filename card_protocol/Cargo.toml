@@ -16,4 +16,3 @@ crypto_primitives = { path = "../crypto_primitives" }
 merlin = "3.0.0"
 rand = "0.8.4"
 starknet_curve = { path = "../starknet_curve" }
-utils = { path = "../utils" }

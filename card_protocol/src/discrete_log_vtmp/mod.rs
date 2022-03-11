@@ -1,14 +1,17 @@
 pub mod tests;
 
-use super::VerifiableThresholdMaskingProtocol;
+use super::CardGameProtocol;
 use anyhow::Result;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::PrimeField;
 use ark_std::rand::Rng;
 use ark_std::{One, Zero};
 use crypto_primitives::homomorphic_encryption::{
-    el_gamal, el_gamal::ElGamal, HomomorphicEncryptionScheme, MulByScalar,
+    el_gamal, el_gamal::ElGamal, HomomorphicEncryptionScheme,
 };
+use crypto_primitives::utils::ops::{FromField, MulByScalar, ToField};
+use crypto_primitives::utils::permutation::Permutation;
+use crypto_primitives::vector_commitment::pedersen::PedersenCommitment;
 use crypto_primitives::zkp::proofs::{
     chaum_pedersen_dl_equality, chaum_pedersen_dl_equality::DLEquality,
 };
@@ -18,18 +21,23 @@ use crypto_primitives::zkp::proofs::{
 use crypto_primitives::zkp::ArgumentOfKnowledge;
 use std::iter::Iterator;
 use std::marker::PhantomData;
-use utils::permutation::Permutation;
 
-pub struct DiscreteLogVTMF<'a, C: ProjectiveCurve> {
+pub struct DiscreteLogVTMF<'a, C> {
     _group: &'a PhantomData<C>,
 }
 
-impl<'a, C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>>
-    for DiscreteLogVTMF<'a, C>
+impl<'a, C>
+    CardGameProtocol<
+        C::ScalarField,
+        ElGamal<C>,
+        PedersenCommitment<C>,
+        SchnorrIdentification<'a, C>,
+        DLEquality<'a, C>,
+    > for DiscreteLogVTMF<'a, C>
+where
+    C: ProjectiveCurve,
 {
     type DecryptionKey = C;
-    type DLEqualityProof = chaum_pedersen_dl_equality::proof::Proof<C>;
-    type PrivateKeyProof = schnorr_identification::proof::Proof<C>;
 
     fn setup<R: Rng>(rng: &mut R) -> anyhow::Result<el_gamal::Parameters<C>> {
         let setup = ElGamal::<C>::setup(rng)?;
@@ -50,7 +58,7 @@ impl<'a, C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>>
     ) -> Result<(
         el_gamal::PublicKey<C>,
         el_gamal::SecretKey<C>,
-        Self::PrivateKeyProof,
+        schnorr_identification::proof::Proof<C>,
     )> {
         let (pk, sk) = ElGamal::<C>::keygen(pp, rng)?;
 
@@ -79,16 +87,22 @@ impl<'a, C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>>
         shared_key: &el_gamal::PublicKey<C>,
         message: &el_gamal::Plaintext<C>,
         r: &el_gamal::Randomness<C>,
-    ) -> Result<(el_gamal::Ciphertext<C>, Self::DLEqualityProof)> {
+    ) -> Result<(
+        el_gamal::Ciphertext<C>,
+        chaum_pedersen_dl_equality::proof::Proof<C>,
+    )> {
         let ciphertext = Self::mask(&pp, &shared_key, &message, &r)?;
 
         let proof_parameters =
             chaum_pedersen_dl_equality::Parameters::<C>::new(pp.generator, *shared_key);
-        let negative_message = message.mul(-C::ScalarField::one());
-        let statement_cipher = negative_message.add_mixed(&ciphertext.1).into_affine();
+        let minus_one = -C::ScalarField::one();
+        let minus_one = el_gamal::Randomness::<C>(minus_one);
+        let negative_message = message.mul(minus_one);
+        let statement_cipher = negative_message.into_affine() + ciphertext.1;
         let statement =
             chaum_pedersen_dl_equality::Statement::new(&ciphertext.0, &statement_cipher);
-        let witness = chaum_pedersen_dl_equality::Witness::new(r);
+        let r = r.into_field();
+        let witness = chaum_pedersen_dl_equality::Witness::new(&r);
         let proof = DLEquality::prove(&proof_parameters, &statement, &witness)?;
         Ok((ciphertext, proof))
     }
@@ -107,7 +121,7 @@ impl<'a, C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>>
         cipher: &el_gamal::Ciphertext<C>,
     ) -> Result<el_gamal::Plaintext<C>> {
         let neg = -decryption_key.into_affine();
-        let decrypted = neg + cipher.1;
+        let decrypted = el_gamal::Plaintext::from_affine(neg + cipher.1);
 
         Ok(decrypted)
     }
@@ -118,7 +132,8 @@ impl<'a, C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>>
         ciphertext: &el_gamal::Ciphertext<C>,
         alpha: &el_gamal::Randomness<C>,
     ) -> Result<el_gamal::Ciphertext<C>> {
-        let masking_point = Self::mask(pp, shared_key, &C::Affine::zero(), alpha)?;
+        let zero = el_gamal::Plaintext::zero();
+        let masking_point = Self::mask(pp, shared_key, &zero, alpha)?;
         let remasked_cipher = *ciphertext + masking_point;
 
         Ok(remasked_cipher)
@@ -129,19 +144,25 @@ impl<'a, C: ProjectiveCurve> VerifiableThresholdMaskingProtocol<ElGamal<C>>
         shared_key: &el_gamal::PublicKey<C>,
         ciphertext: &el_gamal::Ciphertext<C>,
         alpha: &el_gamal::Randomness<C>,
-    ) -> Result<(el_gamal::Ciphertext<C>, Self::DLEqualityProof)> {
-        let masking_point = Self::mask(pp, shared_key, &C::Affine::zero(), alpha)?;
+    ) -> Result<(
+        el_gamal::Ciphertext<C>,
+        chaum_pedersen_dl_equality::proof::Proof<C>,
+    )> {
+        let zero = el_gamal::Plaintext::zero();
+        let masking_point = Self::mask(pp, shared_key, &zero, alpha)?;
         let remasked_cipher = *ciphertext + masking_point;
 
         let proof_parameters =
             chaum_pedersen_dl_equality::Parameters::new(pp.generator, *shared_key);
         let neg_one = -C::ScalarField::one();
+        let neg_one = el_gamal::Randomness::from_field(neg_one);
         let negative_cipher = ciphertext.mul(neg_one);
         let statement_cipher = remasked_cipher + negative_cipher;
 
         let statement =
             chaum_pedersen_dl_equality::Statement::new(&statement_cipher.0, &statement_cipher.1);
-        let witness = chaum_pedersen_dl_equality::Witness::new(alpha);
+        let alpha = alpha.into_field();
+        let witness = chaum_pedersen_dl_equality::Witness::new(&alpha);
 
         let proof = DLEquality::prove(&proof_parameters, &statement, &witness)?;
 

@@ -1,1 +1,0 @@
-// Function for challenge powers

@@ -1,19 +1,16 @@
 #[cfg(test)]
 mod test {
-    use crate::discrete_log_vtmp::{DiscreteLogVTMF, VerifiableThresholdMaskingProtocol};
+    use crate::discrete_log_vtmp::{CardGameProtocol, DiscreteLogVTMF};
 
-    use ark_ec::{AffineCurve, ProjectiveCurve};
     use ark_ff::One;
     use ark_std::{test_rng, UniformRand, Zero};
-    use crypto_primitives::homomorphic_encryption::{
-        el_gamal::{Ciphertext, Randomness},
-        MulByScalar,
-    };
+    use crypto_primitives::homomorphic_encryption::el_gamal::{Ciphertext, Plaintext, Randomness};
+    use crypto_primitives::utils::ops::MulByScalar;
+    use crypto_primitives::utils::permutation::Permutation;
     use crypto_primitives::zkp::proofs::chaum_pedersen_dl_equality;
     use rand::thread_rng;
-    use starknet_curve::{Affine, Fr, Projective};
+    use starknet_curve::{Projective};
     use std::iter::Iterator;
-    use utils::permutation::Permutation;
 
     #[test]
     fn n_of_n_threshold_decryption_test() {
@@ -29,11 +26,11 @@ mod test {
         let (pk2, sk2) = DiscreteLogVTMF::<Projective>::keygen(&parameters, rng2).unwrap();
         let (pk3, sk3) = DiscreteLogVTMF::<Projective>::keygen(&parameters, rng3).unwrap();
 
-        let msg = Projective::rand(rng).into();
-        let r0 = Fr::rand(rng);
-        let r1 = Fr::rand(rng);
-        let r2 = Fr::rand(rng);
-        let r3 = Fr::rand(rng);
+        let msg = Plaintext::rand(rng);
+        let r0 = Randomness::rand(rng);
+        let r1 = Randomness::rand(rng);
+        let r2 = Randomness::rand(rng);
+        let r3 = Randomness::rand(rng);
 
         let shared_key = pk1 + pk2 + pk3;
 
@@ -70,16 +67,15 @@ mod test {
 
         let (master_pk, _) = DiscreteLogVTMF::<Projective>::keygen(&parameters, rng1).unwrap();
 
-        let mut card_rng = thread_rng();
         let deck = (0..number_of_cards)
             .collect::<Vec<usize>>()
             .iter()
             .map(|_| {
-                let one = Fr::one();
+                let one = Randomness::one();
                 DiscreteLogVTMF::<Projective>::mask(
                     &parameters,
                     &master_pk,
-                    &Projective::rand(&mut card_rng).into(),
+                    &Plaintext::rand(rng),
                     &one,
                 )
                 .unwrap()
@@ -90,7 +86,7 @@ mod test {
         let masking_factors = (0..number_of_cards)
             .collect::<Vec<usize>>()
             .iter()
-            .map(|_| Fr::rand(&mut masking_rng))
+            .map(|_| Randomness::rand(&mut masking_rng))
             .collect::<Vec<_>>();
 
         let permutation = Permutation::new(rng, number_of_cards);
@@ -113,7 +109,7 @@ mod test {
         let global_masking = DiscreteLogVTMF::<Projective>::mask(
             &parameters,
             &master_pk,
-            &Affine::zero(),
+            &Plaintext::zero(),
             &sum_of_randomness.unwrap(),
         )
         .unwrap();
@@ -133,18 +129,15 @@ mod test {
 
         let (pk1, _) = DiscreteLogVTMF::<Projective>::keygen(&parameters, rng1).unwrap();
 
-        let msg = Projective::rand(rng).into();
+        let msg = Plaintext::from_projective(Projective::rand(rng));
 
-        let r0 = Fr::rand(rng);
+        let r0 = Randomness::rand(rng);
 
         let (cipher, proof) =
             DiscreteLogVTMF::<Projective>::verified_mask(&parameters, &pk1, &msg, &r0).unwrap();
 
-        let negative_message = msg.mul(-Fr::one());
-        let statement = (
-            cipher.0,
-            negative_message.add_mixed(&cipher.1).into_affine(),
-        );
+        let negative_message = msg.mul(-Randomness::one());
+        let statement = (cipher.0, negative_message.into_affine() + cipher.1);
 
         let statement = chaum_pedersen_dl_equality::Statement::new(&statement.0, &statement.1);
         let proof_parameters =
@@ -163,10 +156,10 @@ mod test {
         let (pk1, _) = DiscreteLogVTMF::<Projective>::keygen(&parameters, rng1).unwrap();
 
         // Message
-        let msg = Projective::rand(rng).into();
+        let msg = Plaintext::from_projective(Projective::rand(rng));
 
         // Masked once
-        let r0 = Fr::rand(rng);
+        let r0 = Randomness::rand(rng);
         let cipher = DiscreteLogVTMF::<Projective>::mask(&parameters, &pk1, &msg, &r0).unwrap();
 
         // Remasking
@@ -175,9 +168,8 @@ mod test {
                 .unwrap();
 
         // Compute statement on verifier side
-        let neg_one = -Fr::one();
         // let negative_cipher = DiscreteLogVTMF::<Projective>::mul(&cipher, &neg_one).unwrap();
-        let negative_cipher = cipher.mul(neg_one);
+        let negative_cipher = cipher.mul(-Randomness::one());
         let statement = remasked + negative_cipher;
 
         // Compute parameters on verifier side

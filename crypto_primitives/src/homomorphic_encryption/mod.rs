@@ -1,18 +1,25 @@
 use crate::error::CryptoError;
+use crate::utils::ops::{MulByScalar, ToField};
 use ark_ff::Field;
-use ark_serialize::CanonicalSerialize;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::Rng;
 use std::ops;
 
 pub mod el_gamal;
 
-pub trait HomomorphicEncryptionScheme {
-    type Parameters: CanonicalSerialize;
-    type PublicKey: CanonicalSerialize;
-    type SecretKey: CanonicalSerialize;
-    type Randomness: Field + CanonicalSerialize;
-    type Plaintext: CanonicalSerialize;
-    type Ciphertext: ops::Add + MulByScalar<Self::Randomness> + CanonicalSerialize;
+pub trait HomomorphicEncryptionScheme<F: Field> {
+    type Parameters: CanonicalSerialize + CanonicalDeserialize;
+    type PublicKey: CanonicalSerialize + CanonicalDeserialize;
+    type SecretKey: CanonicalSerialize + CanonicalDeserialize;
+    type Randomness: ToField<F> + CanonicalSerialize + CanonicalDeserialize;
+    type Plaintext: ops::Add
+        + MulByScalar<F, Self::Randomness>
+        + CanonicalSerialize
+        + CanonicalDeserialize;
+    type Ciphertext: ops::Add
+        + MulByScalar<F, Self::Randomness>
+        + CanonicalSerialize
+        + CanonicalDeserialize;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, CryptoError>;
 
@@ -33,11 +40,4 @@ pub trait HomomorphicEncryptionScheme {
         sk: &Self::SecretKey,
         ciphertext: &Self::Ciphertext,
     ) -> Result<Self::Plaintext, CryptoError>;
-}
-
-pub trait MulByScalar<Rhs: Field> {
-    type Output;
-
-    fn mul(self, rhs: Rhs) -> Self::Output;
-    fn mul_in_place(&mut self, rhs: Rhs);
 }

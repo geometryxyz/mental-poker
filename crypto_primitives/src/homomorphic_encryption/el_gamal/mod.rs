@@ -1,82 +1,47 @@
 use crate::error::CryptoError;
 use crate::homomorphic_encryption::HomomorphicEncryptionScheme;
+use crate::utils::ops::{FromField, ToField};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{fields::PrimeField, UniformRand};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, SerializationError};
 use ark_std::io::{Read, Write};
 use ark_std::marker::PhantomData;
 use ark_std::rand::Rng;
+use ark_ff::{Zero, One};
 
-pub mod ciphertext_arithmetic;
+pub mod ciphertext;
+pub mod plaintext;
+pub mod randomness;
 
 pub struct ElGamal<C: ProjectiveCurve> {
     _group: PhantomData<C>,
 }
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct Parameters<C: ProjectiveCurve> {
     pub generator: C::Affine,
 }
 
 pub type PublicKey<C> = <C as ProjectiveCurve>::Affine;
 
-pub type Plaintext<C> = <C as ProjectiveCurve>::Affine;
+
+#[derive(Clone, Copy, PartialEq, Debug, CanonicalSerialize, CanonicalDeserialize)]
+pub struct Plaintext<C: ProjectiveCurve>(pub C::Affine);
+
 
 pub type SecretKey<C> = <C as ProjectiveCurve>::ScalarField;
 
-pub type Randomness<C> = <C as ProjectiveCurve>::ScalarField;
 
-impl<C: ProjectiveCurve> CanonicalSerialize for Parameters<C> {
-    #[inline]
-    fn serialize<W: Write>(&self, mut writer: W) -> Result<(), SerializationError> {
-        self.generator.serialize(&mut writer)?;
-        Ok(())
-    }
+#[derive(Clone, Copy, PartialEq, Debug, CanonicalSerialize, CanonicalDeserialize)]
+pub struct Randomness<C: ProjectiveCurve>(pub C::ScalarField);
 
-    #[inline]
-    fn serialized_size(&self) -> usize {
-        self.generator.serialized_size()
-    }
 
-    #[inline]
-    fn serialize_uncompressed<W: Write>(&self, mut writer: W) -> Result<(), SerializationError> {
-        self.generator.serialize_uncompressed(&mut writer)?;
-        Ok(())
-    }
-
-    #[inline]
-    fn uncompressed_size(&self) -> usize {
-        self.generator.uncompressed_size()
-    }
-}
-
-impl<C: ProjectiveCurve> CanonicalDeserialize for Parameters<C> {
-    fn deserialize<R: Read>(mut reader: R) -> Result<Self, SerializationError> {
-        let generator = C::Affine::deserialize(&mut reader)?;
-
-        Ok(Self { generator })
-    }
-
-    fn deserialize_uncompressed<R: Read>(
-        mut reader: R,
-    ) -> Result<Self, ark_serialize::SerializationError> {
-        let generator = C::Affine::deserialize_uncompressed(&mut reader)?;
-
-        Ok(Self { generator })
-    }
-
-    fn deserialize_unchecked<R: Read>(mut reader: R) -> Result<Self, SerializationError> {
-        let generator = C::Affine::deserialize_unchecked(&mut reader)?;
-
-        Ok(Self { generator })
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Ciphertext<C: ProjectiveCurve>(pub C::Affine, pub C::Affine);
 
-impl<C: ProjectiveCurve> HomomorphicEncryptionScheme for ElGamal<C>
+impl<C: ProjectiveCurve> HomomorphicEncryptionScheme<C::ScalarField> for ElGamal<C>
 where
-    C::ScalarField: PrimeField,
+    C: ProjectiveCurve,
 {
     type Parameters = Parameters<C>;
     type PublicKey = PublicKey<C>;
@@ -112,13 +77,13 @@ where
         r: &Self::Randomness,
     ) -> Result<Self::Ciphertext, CryptoError> {
         // compute s = r*pk
-        let s = pk.mul(r.into_repr()).into();
+        let s = Plaintext::from_projective(pk.mul(r.into_field().into_repr()));
 
         // compute c1 = r*generator
-        let c1 = pp.generator.mul(r.into_repr()).into();
+        let c1 = pp.generator.mul(r.into_field().into_repr()).into();
 
         // compute c2 = m + s
-        let c2 = *message + s;
+        let c2 = (*message + s).into_affine();
 
         Ok(Ciphertext(c1, c2))
     }
@@ -138,6 +103,6 @@ where
         // compute message = c2 - s
         let m = c2 + s_inv.into_affine();
 
-        Ok(m)
+        Ok(Plaintext::from_affine(m))
     }
 }

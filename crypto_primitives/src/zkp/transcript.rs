@@ -1,11 +1,11 @@
-use ark_ff::PrimeField;
+use ark_ff::{PrimeField, Field};
 use ark_serialize::CanonicalSerialize;
 use merlin::Transcript;
 
 pub(crate) trait TranscriptProtocol {
     fn append(&mut self, label: &'static [u8], item: &impl CanonicalSerialize);
 
-    fn challenge_scalar<F: PrimeField>(&mut self, label: &'static [u8]) -> F;
+    fn challenge_scalar<F: Field>(&mut self, label: &'static [u8]) -> F;
 }
 
 impl TranscriptProtocol for Transcript {
