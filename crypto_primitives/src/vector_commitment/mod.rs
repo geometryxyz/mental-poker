@@ -1,8 +1,16 @@
 pub mod pedersen;
+use crate::error::CryptoError;
 use ark_ec::ProjectiveCurve;
+use rand::Rng;
 
 pub trait HomomorphicCommitment<C: ProjectiveCurve> {
-    fn commit_scalar(g: C::Affine, h: C::Affine, x: C::ScalarField, r: C::ScalarField) -> C;
+    type CommitKey;
 
-    fn commit_vector(commit_key: &Vec<C::Affine>, x: &Vec<C::ScalarField>, r: C::ScalarField) -> C;
+    fn setup<R: Rng>(public_randomess: &mut R, len: usize) -> Self::CommitKey;
+
+    fn commit(
+        commit_key: &Self::CommitKey,
+        x: &Vec<C::ScalarField>,
+        r: C::ScalarField,
+    ) -> Result<C, CryptoError>;
 }
