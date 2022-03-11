@@ -8,6 +8,8 @@ use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{One, PrimeField, Zero, Field};
 use merlin::Transcript;
 use std::iter;
+use crate::utils::ops::{FromField};
+use crate::zkp::arguments::scalar_powers;
 // use crate::zkp::scalar_powers;
 
 pub struct Proof<F, Enc, Comm>
@@ -66,7 +68,7 @@ where
         transcript.append(b"commit_B_k", &self.commit_b_k);
         transcript.append(b"vector_E_k", &self.vector_e_k);
 
-        let challenge = transcript.challenge_scalar(b"x");
+        let challenge = Comm::Scalar::from_field(transcript.challenge_scalar(b"x"));
 
         // Precompute all powers of the challenge from 0 to number_of_diagonals
         let challenge_powers = iter::once(C::ScalarField::one())
@@ -78,6 +80,7 @@ where
                 }),
             )
             .collect::<Vec<_>>();
+        // let challenge_powers = scalar_powers<F>()
 
         // take vector x: x, x^2, x^3, ..., x^m
         let x_array = challenge_powers[1..m + 1].to_vec();

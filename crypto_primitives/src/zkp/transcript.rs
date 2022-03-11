@@ -1,4 +1,4 @@
-use ark_ff::{PrimeField, Field};
+use ark_ff::Field;
 use ark_serialize::CanonicalSerialize;
 use merlin::Transcript;
 
@@ -17,11 +17,29 @@ impl TranscriptProtocol for Transcript {
 
     fn challenge_scalar<F>(&mut self, label: &'static [u8]) -> F
     where
-        F: PrimeField,
+        F: Field,
     {
-        let size = F::size_in_bits() / 8;
+        let example = F::one();
+        let size = example.serialized_size();
+        // let size = F::size_in_bits() / 8;
         let mut buf = vec![0u8; size];
         self.challenge_bytes(label, &mut buf);
         F::from_random_bytes(&buf).unwrap()
+    }
+}
+
+#[cfg(test)]
+mod transcript_test {
+    use starknet_curve::Fr;
+    use ark_serialize::CanonicalSerialize;
+    use ark_ff::One;
+    #[test]
+    fn f_size() {
+        let one = Fr::one();
+        let serialized_size = one.serialized_size();
+        let uncompressed_size = one.uncompressed_size();
+
+        // expect serialized_size&uncompressed_size to be same for the field
+        assert_eq!(serialized_size, uncompressed_size);
     }
 }

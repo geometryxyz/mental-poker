@@ -1,6 +1,6 @@
 use super::{Commitment, Scalar};
 use crate::utils::ops::MulByScalar;
-use crate::utils::ops::ToField;
+use crate::utils::ops::{ToField};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 
 impl<C: ProjectiveCurve> MulByScalar<C::ScalarField, Scalar<C>> for Commitment<C> {
