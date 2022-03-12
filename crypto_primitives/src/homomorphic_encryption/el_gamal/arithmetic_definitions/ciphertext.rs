@@ -1,7 +1,7 @@
-use super::{Ciphertext, Randomness};
+use super::super::{Ciphertext, Randomness};
 use crate::utils::ops::{MulByScalar, ToField};
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_std::{Zero, One};
+use ark_std::Zero;
 
 impl<C: ProjectiveCurve> std::ops::Add<Ciphertext<C>> for Ciphertext<C> {
     type Output = Self;

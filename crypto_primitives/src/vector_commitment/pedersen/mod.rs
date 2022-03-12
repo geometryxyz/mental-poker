@@ -9,7 +9,7 @@ use ark_std::io::{Read, Write};
 use ark_std::marker::PhantomData;
 use rand::Rng;
 
-pub mod commitment_arithmetic;
+pub mod arithmetic_definitions;
 // mod test;
 
 pub struct PedersenCommitment<C: ProjectiveCurve> {
@@ -84,31 +84,5 @@ impl<C: ProjectiveCurve> HomomorphicCommitmentScheme<C::ScalarField> for Pederse
         Ok(Self::Commitment::from_projective(
             VariableBaseMSM::multi_scalar_mul(&bases, &scalars[..]),
         ))
-    }
-}
-
-impl<C: ProjectiveCurve> Scalar<C> {
-    pub fn into_scalarfield(self) -> C::ScalarField {
-        self.0
-    }
-
-    pub fn from(x: C::ScalarField) -> Self {
-        Self(x)
-    }
-}
-
-impl<C: ProjectiveCurve> std::ops::Add<Scalar<C>> for Scalar<C> {
-    type Output = Self;
-
-    fn add(self, _rhs: Self) -> Self {
-        Self(self.0 + _rhs.0)
-    }
-}
-
-impl<C: ProjectiveCurve> std::ops::Mul<Scalar<C>> for Scalar<C> {
-    type Output = Self;
-
-    fn mul(self, _rhs: Self) -> Self {
-        Self(self.0 * _rhs.0)
     }
 }

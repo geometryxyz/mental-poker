@@ -1,4 +1,4 @@
-use super::{Plaintext, Randomness};
+use super::super::{Plaintext, Randomness};
 use crate::utils::ops::MulByScalar;
 use crate::utils::ops::ToField;
 use ark_ec::{AffineCurve, ProjectiveCurve};

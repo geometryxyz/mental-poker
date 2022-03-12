@@ -1,10 +1,9 @@
-use super::Randomness;
+use super::super::Randomness;
+use crate::utils::ops::{FromField, ToField};
 use ark_ec::ProjectiveCurve;
-use rand::Rng;
 use ark_ff::{One, Zero};
-use crate::utils::ops::{ToField, FromField};
 use ark_std::UniformRand;
-
+use rand::Rng;
 
 impl<C: ProjectiveCurve> Randomness<C> {
     pub fn rand<R: Rng>(rng: &mut R) -> Self {
@@ -57,7 +56,6 @@ impl<C: ProjectiveCurve> One for Randomness<C> {
         Self(C::ScalarField::one())
     }
 }
-
 
 impl<C: ProjectiveCurve> ToField<C::ScalarField> for Randomness<C> {
     fn into_field(self) -> C::ScalarField {

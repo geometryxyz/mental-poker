@@ -1,17 +1,14 @@
 use crate::error::CryptoError;
 use crate::homomorphic_encryption::HomomorphicEncryptionScheme;
-use crate::utils::ops::{FromField, ToField};
+use crate::utils::ops::ToField;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{fields::PrimeField, UniformRand};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, SerializationError};
 use ark_std::io::{Read, Write};
 use ark_std::marker::PhantomData;
 use ark_std::rand::Rng;
-use ark_ff::{Zero, One};
 
-pub mod ciphertext;
-pub mod plaintext;
-pub mod randomness;
+pub mod arithmetic_definitions;
 
 pub struct ElGamal<C: ProjectiveCurve> {
     _group: PhantomData<C>,
@@ -24,17 +21,13 @@ pub struct Parameters<C: ProjectiveCurve> {
 
 pub type PublicKey<C> = <C as ProjectiveCurve>::Affine;
 
-
 #[derive(Clone, Copy, PartialEq, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Plaintext<C: ProjectiveCurve>(pub C::Affine);
 
-
 pub type SecretKey<C> = <C as ProjectiveCurve>::ScalarField;
-
 
 #[derive(Clone, Copy, PartialEq, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Randomness<C: ProjectiveCurve>(pub C::ScalarField);
-
 
 #[derive(Clone, Copy, PartialEq, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Ciphertext<C: ProjectiveCurve>(pub C::Affine, pub C::Affine);
