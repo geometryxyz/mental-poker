@@ -10,7 +10,7 @@ use ark_std::marker::PhantomData;
 use rand::Rng;
 
 pub mod arithmetic_definitions;
-// mod test;
+mod tests;
 
 pub struct PedersenCommitment<C: ProjectiveCurve> {
     _curve: PhantomData<C>,

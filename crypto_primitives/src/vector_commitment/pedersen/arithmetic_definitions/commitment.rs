@@ -2,6 +2,8 @@ use super::super::{Commitment, Scalar};
 use crate::utils::ops::MulByScalar;
 use crate::utils::ops::ToField;
 use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_std::UniformRand;
+use rand::Rng;
 
 impl<C: ProjectiveCurve> MulByScalar<C::ScalarField, Scalar<C>> for Commitment<C> {
     type Output = Self;
@@ -34,5 +36,11 @@ impl<C: ProjectiveCurve> Commitment<C> {
 
     pub fn into_affine(self) -> C::Affine {
         self.0
+    }
+}
+
+impl<C: ProjectiveCurve> UniformRand for Commitment<C> {
+    fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self {
+        Self::from_projective(C::rand(rng))
     }
 }

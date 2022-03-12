@@ -9,6 +9,7 @@ use ark_std::marker::PhantomData;
 use ark_std::rand::Rng;
 
 pub mod arithmetic_definitions;
+mod tests;
 
 pub struct ElGamal<C: ProjectiveCurve> {
     _group: PhantomData<C>,

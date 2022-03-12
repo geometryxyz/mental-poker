@@ -1,7 +1,9 @@
 use super::super::{Ciphertext, Randomness};
 use crate::utils::ops::{MulByScalar, ToField};
 use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_std::UniformRand;
 use ark_std::Zero;
+use rand::Rng;
 
 impl<C: ProjectiveCurve> std::ops::Add<Ciphertext<C>> for Ciphertext<C> {
     type Output = Self;
@@ -40,6 +42,15 @@ impl<C: ProjectiveCurve> MulByScalar<C::ScalarField, Randomness<C>> for Cipherte
     fn mul_in_place(&mut self, scalar: Randomness<C>) {
         self.0 = self.0.mul(scalar.into_field()).into_affine();
         self.1 = self.1.mul(scalar.into_field()).into_affine();
+    }
+}
+
+impl<C: ProjectiveCurve> UniformRand for Ciphertext<C> {
+    fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self {
+        let c0 = C::rand(rng).into_affine();
+        let c1 = C::rand(rng).into_affine();
+
+        Self(c0, c1)
     }
 }
 

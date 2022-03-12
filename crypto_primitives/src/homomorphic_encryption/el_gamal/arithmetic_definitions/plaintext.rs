@@ -4,6 +4,7 @@ use crate::utils::ops::ToField;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::Zero;
 use ark_std::rand::Rng;
+use ark_std::UniformRand;
 
 impl<C: ProjectiveCurve> MulByScalar<C::ScalarField, Randomness<C>> for Plaintext<C> {
     type Output = Self;
@@ -37,9 +38,11 @@ impl<C: ProjectiveCurve> Plaintext<C> {
     pub fn into_affine(self) -> C::Affine {
         self.0
     }
+}
 
-    pub fn rand<R: Rng>(rng: &mut R) -> Self {
-        Self(C::rand(rng).into())
+impl<C: ProjectiveCurve> UniformRand for Plaintext<C> {
+    fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self {
+        Self::from_projective(C::rand(rng))
     }
 }
 

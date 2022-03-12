@@ -30,9 +30,9 @@ impl TranscriptProtocol for Transcript {
 
 #[cfg(test)]
 mod transcript_test {
-    use starknet_curve::Fr;
-    use ark_serialize::CanonicalSerialize;
     use ark_ff::One;
+    use ark_serialize::CanonicalSerialize;
+    use starknet_curve::Fr;
     #[test]
     fn f_size() {
         let one = Fr::one();

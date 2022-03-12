@@ -5,8 +5,8 @@ use ark_ff::{One, Zero};
 use ark_std::UniformRand;
 use rand::Rng;
 
-impl<C: ProjectiveCurve> Randomness<C> {
-    pub fn rand<R: Rng>(rng: &mut R) -> Self {
+impl<C: ProjectiveCurve> UniformRand for Randomness<C> {
+    fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self {
         Self::from_field(C::ScalarField::rand(rng))
     }
 }

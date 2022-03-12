@@ -9,7 +9,7 @@ mod test {
     use crypto_primitives::utils::permutation::Permutation;
     use crypto_primitives::zkp::proofs::chaum_pedersen_dl_equality;
     use rand::thread_rng;
-    use starknet_curve::{Projective};
+    use starknet_curve::Projective;
     use std::iter::Iterator;
 
     #[test]

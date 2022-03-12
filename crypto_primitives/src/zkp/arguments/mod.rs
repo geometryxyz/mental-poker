@@ -1,10 +1,10 @@
 pub mod hadamard_product;
-pub mod multi_exponentiation;
+// pub mod multi_exponentiation;
 pub mod shuffle;
 pub mod single_value_product;
 pub mod zero_value_bilinear_map;
 
-use ark_ff::{Field, One};
+use ark_ff::Field;
 use std::iter;
 
 pub fn scalar_powers<F: Field>(x: F, n: usize) -> Vec<F> {
