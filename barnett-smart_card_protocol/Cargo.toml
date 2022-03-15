@@ -1,5 +1,5 @@
 [package]
-name = "card_protocol"
+name = "barnett-smart_card_protocol"
 version = "0.1.0"
 edition = "2021"
 
@@ -16,3 +16,4 @@ crypto_primitives = { path = "../crypto_primitives" }
 merlin = "3.0.0"
 rand = "0.8.4"
 starknet_curve = { path = "../starknet_curve" }
+thiserror = "1.0.30"
