@@ -6,7 +6,7 @@ use crate::error::CryptoError;
 use crate::zkp::ArgumentOfKnowledge;
 use ark_ec::ProjectiveCurve;
 use ark_std::marker::PhantomData;
-use ark_std::rand::Rng;
+// use ark_std::rand::Rng;
 
 pub struct DLEquality<'a, C: ProjectiveCurve> {
     _group: PhantomData<&'a C>,
@@ -31,15 +31,7 @@ impl<'a, C: ProjectiveCurve> Statement<'a, C> {
     }
 }
 
-pub struct Witness<'a, C: ProjectiveCurve> {
-    pub secret_exponent: &'a C::ScalarField,
-}
-
-impl<'a, C: ProjectiveCurve> Witness<'a, C> {
-    pub fn new(secret_exponent: &'a C::ScalarField) -> Self {
-        Self { secret_exponent }
-    }
-}
+type Witness<C> = <C as ProjectiveCurve>::ScalarField;
 
 impl<'a, C> ArgumentOfKnowledge for DLEquality<'a, C>
 where
@@ -47,16 +39,16 @@ where
 {
     type CommonReferenceString = Parameters<C>;
     type Statement = Statement<'a, C>;
-    type Witness = Witness<'a, C>;
+    type Witness = Witness<C>;
     type Proof = proof::Proof<C>;
 
-    fn setup<R: Rng>(rng: &mut R) -> Result<Self::CommonReferenceString, CryptoError> {
-        let generator1 = C::rand(rng).into_affine();
-        let generator2 = C::rand(rng).into_affine();
-        let parameters = Parameters::<C>::new(generator1, generator2);
+    // fn setup<R: Rng>(rng: &mut R) -> Result<Self::CommonReferenceString, CryptoError> {
+    //     let generator1 = C::rand(rng).into_affine();
+    //     let generator2 = C::rand(rng).into_affine();
+    //     let parameters = Parameters::<C>::new(generator1, generator2);
 
-        Ok(parameters)
-    }
+    //     Ok(parameters)
+    // }
 
     fn prove(
         common_reference_string: &Self::CommonReferenceString,

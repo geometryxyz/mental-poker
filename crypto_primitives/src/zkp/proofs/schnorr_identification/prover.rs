@@ -1,9 +1,10 @@
 use super::{proof::Proof, Parameters, Statement, Witness};
+
 use crate::zkp::transcript::TranscriptProtocol;
+
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::PrimeField;
-use ark_std::rand::thread_rng;
-use ark_std::UniformRand;
+use ark_std::{rand::thread_rng, UniformRand};
 use merlin::Transcript;
 
 use std::marker::PhantomData;
@@ -25,18 +26,18 @@ where
         witness: &Witness<C>,
     ) -> Proof<C> {
         let mut transcript = Transcript::new(b"schnorr_identity");
-        transcript.append(b"public_generator", &pp.generator);
-        transcript.append(b"public_key", statement.statement);
+        transcript.append(b"public_generator", pp);
+        transcript.append(b"public_key", statement);
 
         let rng = &mut thread_rng();
         let random = C::ScalarField::rand(rng);
 
-        let random_commit = pp.generator.mul(random.into_repr());
+        let random_commit = pp.mul(random.into_repr());
         transcript.append(b"witness_commit", &random_commit);
 
         let c: C::ScalarField = transcript.challenge_scalar(b"c");
 
-        let opening = random - c * witness.discrete_log_representation;
+        let opening = random - c * witness;
 
         Proof {
             random_commit,

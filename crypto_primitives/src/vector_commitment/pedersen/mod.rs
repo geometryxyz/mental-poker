@@ -1,12 +1,13 @@
 use crate::error::CryptoError;
-use crate::utils::ops::{FromField, ToField};
 use crate::vector_commitment::HomomorphicCommitmentScheme;
-use ark_ec::msm::VariableBaseMSM;
-use ark_ec::ProjectiveCurve;
+
+use ark_ec::{msm::VariableBaseMSM, ProjectiveCurve};
 use ark_ff::PrimeField;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, SerializationError};
-use ark_std::io::{Read, Write};
-use ark_std::marker::PhantomData;
+use ark_std::{
+    io::{Read, Write},
+    marker::PhantomData,
+};
 use rand::Rng;
 
 pub mod arithmetic_definitions;
@@ -28,27 +29,11 @@ impl<C: ProjectiveCurve> CommitKey<C> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Commitment<C: ProjectiveCurve>(pub C::Affine);
-
-#[derive(Clone, Copy, PartialEq, Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct Scalar<C: ProjectiveCurve>(pub C::ScalarField);
-
-impl<C: ProjectiveCurve> ToField<C::ScalarField> for Scalar<C> {
-    fn into_field(self) -> C::ScalarField {
-        self.0
-    }
-}
-
-impl<C: ProjectiveCurve> FromField<C::ScalarField> for Scalar<C> {
-    fn from_field(x: C::ScalarField) -> Scalar<C> {
-        Scalar::<C>(x)
-    }
-}
 
 impl<C: ProjectiveCurve> HomomorphicCommitmentScheme<C::ScalarField> for PedersenCommitment<C> {
     type CommitKey = CommitKey<C>;
-    type Scalar = Scalar<C>;
     type Commitment = Commitment<C>;
 
     fn setup<R: Rng>(public_randomess: &mut R, len: usize) -> CommitKey<C> {
@@ -62,8 +47,8 @@ impl<C: ProjectiveCurve> HomomorphicCommitmentScheme<C::ScalarField> for Pederse
 
     fn commit(
         commit_key: &CommitKey<C>,
-        x: &Vec<Self::Scalar>,
-        r: Self::Scalar,
+        x: &Vec<C::ScalarField>,
+        r: C::ScalarField,
     ) -> Result<Self::Commitment, CryptoError> {
         if x.len() > commit_key.g.len() {
             return Err(CryptoError::CommitmentLengthError(
@@ -76,13 +61,13 @@ impl<C: ProjectiveCurve> HomomorphicCommitmentScheme<C::ScalarField> for Pederse
         let scalars = [&[r], x.as_slice()]
             .concat()
             .iter()
-            .map(|x| x.into_scalarfield().into_repr())
+            .map(|x| x.into_repr())
             .collect::<Vec<_>>();
 
         let bases = [&[commit_key.h], &commit_key.g[..]].concat();
 
-        Ok(Self::Commitment::from_projective(
-            VariableBaseMSM::multi_scalar_mul(&bases, &scalars[..]),
+        Ok(Commitment(
+            VariableBaseMSM::multi_scalar_mul(&bases, &scalars[..]).into_affine(),
         ))
     }
 }

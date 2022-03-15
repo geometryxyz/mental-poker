@@ -1,12 +1,14 @@
 use crate::error::CryptoError;
 use crate::homomorphic_encryption::HomomorphicEncryptionScheme;
-use crate::utils::ops::ToField;
+
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{fields::PrimeField, UniformRand};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, SerializationError};
-use ark_std::io::{Read, Write};
-use ark_std::marker::PhantomData;
-use ark_std::rand::Rng;
+use ark_std::{
+    io::{Read, Write},
+    marker::PhantomData,
+    rand::Rng,
+};
 
 pub mod arithmetic_definitions;
 mod tests;
@@ -28,9 +30,6 @@ pub struct Plaintext<C: ProjectiveCurve>(pub C::Affine);
 pub type SecretKey<C> = <C as ProjectiveCurve>::ScalarField;
 
 #[derive(Clone, Copy, PartialEq, Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct Randomness<C: ProjectiveCurve>(pub C::ScalarField);
-
-#[derive(Clone, Copy, PartialEq, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Ciphertext<C: ProjectiveCurve>(pub C::Affine, pub C::Affine);
 
 impl<C: ProjectiveCurve> HomomorphicEncryptionScheme<C::ScalarField> for ElGamal<C>
@@ -40,7 +39,6 @@ where
     type Parameters = Parameters<C>;
     type PublicKey = PublicKey<C>;
     type SecretKey = SecretKey<C>;
-    type Randomness = Randomness<C>;
     type Plaintext = Plaintext<C>;
     type Ciphertext = Ciphertext<C>;
 
@@ -68,18 +66,18 @@ where
         pp: &Self::Parameters,
         pk: &Self::PublicKey,
         message: &Self::Plaintext,
-        r: &Self::Randomness,
+        r: &C::ScalarField,
     ) -> Result<Self::Ciphertext, CryptoError> {
         // compute s = r*pk
-        let s = Plaintext::from_projective(pk.mul(r.into_field().into_repr()));
+        let s = Plaintext(pk.mul(r.into_repr()).into_affine());
 
         // compute c1 = r*generator
-        let c1 = pp.generator.mul(r.into_field().into_repr()).into();
+        let c1 = pp.generator.mul(r.into_repr()).into();
 
         // compute c2 = m + s
-        let c2 = (*message + s).into_affine();
+        let c2 = *message + s;
 
-        Ok(Ciphertext(c1, c2))
+        Ok(Ciphertext(c1, c2.0))
     }
 
     fn decrypt(
@@ -97,6 +95,6 @@ where
         // compute message = c2 - s
         let m = c2 + s_inv.into_affine();
 
-        Ok(Plaintext::from_affine(m))
+        Ok(Plaintext(m))
     }
 }

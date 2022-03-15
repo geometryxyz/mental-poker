@@ -1,15 +1,21 @@
-use super::super::{Ciphertext, Randomness};
-use crate::utils::ops::{MulByScalar, ToField};
+use super::super::Ciphertext;
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_std::UniformRand;
-use ark_std::Zero;
+use ark_std::{UniformRand, Zero};
 use rand::Rng;
+use std::ops::Mul;
 
 impl<C: ProjectiveCurve> std::ops::Add<Ciphertext<C>> for Ciphertext<C> {
     type Output = Self;
 
     fn add(self, _rhs: Self) -> Self {
         Self(self.0 + _rhs.0, self.1 + _rhs.1)
+    }
+}
+
+impl<C: ProjectiveCurve> Mul<C::ScalarField> for Ciphertext<C> {
+    type Output = Self;
+    fn mul(self, x: C::ScalarField) -> Self::Output {
+        Self(self.0.mul(x).into_affine(), self.1.mul(x).into_affine())
     }
 }
 
@@ -26,22 +32,6 @@ impl<C: ProjectiveCurve> Zero for Ciphertext<C> {
 
     fn is_zero(&self) -> bool {
         *self == Self(C::Affine::zero(), C::Affine::zero())
-    }
-}
-
-impl<C: ProjectiveCurve> MulByScalar<C::ScalarField, Randomness<C>> for Ciphertext<C> {
-    type Output = Self;
-
-    fn mul(self, scalar: Randomness<C>) -> Self::Output {
-        Self(
-            self.0.mul(scalar.into_field()).into_affine(),
-            self.1.mul(scalar.into_field()).into_affine(),
-        )
-    }
-
-    fn mul_in_place(&mut self, scalar: Randomness<C>) {
-        self.0 = self.0.mul(scalar.into_field()).into_affine();
-        self.1 = self.1.mul(scalar.into_field()).into_affine();
     }
 }
 

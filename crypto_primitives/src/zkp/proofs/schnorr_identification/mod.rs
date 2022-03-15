@@ -6,58 +6,27 @@ use crate::error::CryptoError;
 use crate::zkp::ArgumentOfKnowledge;
 use ark_ec::ProjectiveCurve;
 use ark_std::marker::PhantomData;
-use ark_std::rand::Rng;
+// use ark_std::rand::Rng;
 
 pub struct SchnorrIdentification<'a, C: ProjectiveCurve> {
     _group: PhantomData<&'a C>,
 }
 
-pub struct Parameters<C: ProjectiveCurve> {
-    pub generator: C::Affine,
-}
+pub type Parameters<C> = <C as ProjectiveCurve>::Affine;
 
-impl<C: ProjectiveCurve> Parameters<C> {
-    pub fn new(generator: C::Affine) -> Self {
-        Self { generator }
-    }
-}
+pub type Statement<C> = <C as ProjectiveCurve>::Affine;
 
-pub struct Statement<'a, C: ProjectiveCurve> {
-    pub statement: &'a C,
-}
-
-impl<'a, C: ProjectiveCurve> Statement<'a, C> {
-    pub fn new(to_prove: &'a C) -> Self {
-        Self {
-            statement: to_prove,
-        }
-    }
-}
-
-pub struct Witness<'a, C: ProjectiveCurve> {
-    pub discrete_log_representation: &'a C::ScalarField,
-}
-
-impl<'a, C: ProjectiveCurve> Witness<'a, C> {
-    pub fn new(discrete_log_representation: &'a C::ScalarField) -> Self {
-        Self {
-            discrete_log_representation,
-        }
-    }
-}
+pub type Witness<C> = <C as ProjectiveCurve>::ScalarField;
 
 impl<'a, C: ProjectiveCurve> ArgumentOfKnowledge for SchnorrIdentification<'a, C> {
     type CommonReferenceString = Parameters<C>;
-    type Statement = Statement<'a, C>;
-    type Witness = Witness<'a, C>;
+    type Statement = Statement<C>;
+    type Witness = Witness<C>;
     type Proof = proof::Proof<C>;
 
-    fn setup<R: Rng>(rng: &mut R) -> Result<Self::CommonReferenceString, CryptoError> {
-        let generator = C::rand(rng).into_affine();
-        let parameters = Parameters::<C>::new(generator);
-
-        Ok(parameters)
-    }
+    // fn setup<R: Rng>(rng: &mut R) -> Result<Self::CommonReferenceString, CryptoError> {
+    //     Ok(C::rand(rng).into_affine())
+    // }
 
     fn prove(
         common_reference_string: &Self::CommonReferenceString,

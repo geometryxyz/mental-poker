@@ -1,20 +1,14 @@
-use super::super::{Plaintext, Randomness};
-use crate::utils::ops::MulByScalar;
-use crate::utils::ops::ToField;
+use super::super::Plaintext;
+
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::Zero;
-use ark_std::rand::Rng;
-use ark_std::UniformRand;
+use ark_std::{rand::Rng, UniformRand};
+use std::ops::Mul;
 
-impl<C: ProjectiveCurve> MulByScalar<C::ScalarField, Randomness<C>> for Plaintext<C> {
+impl<C: ProjectiveCurve> Mul<C::ScalarField> for Plaintext<C> {
     type Output = Self;
-
-    fn mul(self, scalar: Randomness<C>) -> Self::Output {
-        Self(self.0.mul(scalar.into_field()).into_affine())
-    }
-
-    fn mul_in_place(&mut self, scalar: Randomness<C>) {
-        self.0 = self.0.mul(scalar.into_field()).into_affine();
+    fn mul(self, x: C::ScalarField) -> Self::Output {
+        Self(self.0.mul(x).into_affine())
     }
 }
 
@@ -26,23 +20,9 @@ impl<C: ProjectiveCurve> std::ops::Add<Plaintext<C>> for Plaintext<C> {
     }
 }
 
-impl<C: ProjectiveCurve> Plaintext<C> {
-    pub fn from_affine(point: C::Affine) -> Self {
-        Self(point)
-    }
-
-    pub fn from_projective(point: C) -> Self {
-        Self(point.into())
-    }
-
-    pub fn into_affine(self) -> C::Affine {
-        self.0
-    }
-}
-
 impl<C: ProjectiveCurve> UniformRand for Plaintext<C> {
     fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self {
-        Self::from_projective(C::rand(rng))
+        Self(C::rand(rng).into_affine())
     }
 }
 

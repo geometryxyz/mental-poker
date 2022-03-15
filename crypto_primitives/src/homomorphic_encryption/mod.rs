@@ -1,35 +1,37 @@
 use crate::error::CryptoError;
-use crate::utils::ops::{MulByScalar, ToField};
-use ark_ff::Field;
+use ark_ff::{Field, Zero};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::Rng;
+use std::iter::Sum;
 use std::ops;
 
 pub mod el_gamal;
 
 /// Trait defining the types and functions needed for an additively homomorphic encryption scheme.
 /// The scheme is defined with respect to a finite field `F` for which scalar multiplication is preserved.
-pub trait HomomorphicEncryptionScheme<F: Field> {
+pub trait HomomorphicEncryptionScheme<Scalar: Field> {
     type Parameters: CanonicalSerialize + CanonicalDeserialize;
     type PublicKey: CanonicalSerialize + CanonicalDeserialize;
     type SecretKey: CanonicalSerialize + CanonicalDeserialize;
 
-    /// Represent the randomness used when performing encryption. This randomness must be part of the scalar field.
-    type Randomness: ToField<F> + CanonicalSerialize + CanonicalDeserialize;
-
     /// Represent a plaintext from a generic homomorphic encryption scheme. To manifest the homomorphic
     /// property of the scheme, we require that some arithmetic operations (add and multiply by scalar) are implemented.
-    type Plaintext: ops::Add
-        + MulByScalar<F, Self::Randomness>
+    type Plaintext: Copy
+        + ops::Add
+        + ops::Mul<Scalar, Output = Self::Plaintext>
         + CanonicalSerialize
         + CanonicalDeserialize;
 
     /// Represent a ciphertext from a generic homomorphic encryption scheme. To manifest the homomorphic
     /// property of the scheme, we require that some arithmetic operations (add and multiply by scalar) are implemented.
-    type Ciphertext: ops::Add
-        + MulByScalar<F, Self::Randomness>
+    type Ciphertext: Copy
+        + PartialEq
+        + ops::Add<Output = Self::Ciphertext>
+        + ops::Mul<Scalar, Output = Self::Ciphertext>
         + CanonicalSerialize
-        + CanonicalDeserialize;
+        + CanonicalDeserialize
+        + Sum
+        + Zero;
 
     /// Generate the scheme's parameters.
     fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, CryptoError>;
@@ -45,7 +47,7 @@ pub trait HomomorphicEncryptionScheme<F: Field> {
         pp: &Self::Parameters,
         pk: &Self::PublicKey,
         message: &Self::Plaintext,
-        r: &Self::Randomness,
+        r: &Scalar,
     ) -> Result<Self::Ciphertext, CryptoError>;
 
     /// Recover a message from the provided ciphertext using a private key.

@@ -1,19 +1,59 @@
 pub mod proof;
 pub mod prover;
+mod tests;
 
 use crate::homomorphic_encryption::HomomorphicEncryptionScheme;
 use crate::vector_commitment::HomomorphicCommitmentScheme;
-use crate::zkp::ArgumentOfKnowledge;
-use ark_std::marker::PhantomData;
 use ark_ff::Field;
+use ark_std::marker::PhantomData;
+// use crate::error::CryptoError;
+// use crate::zkp::ArgumentOfKnowledge;
 
-pub struct MultiExponentiation<F : Field, Enc: HomomorphicEncryptionScheme<F>, Comm: HomomorphicCommitmentScheme<F>> {
-    _encryption_scheme: PhantomData<Enc>,
-    _commitment_scheme: PhantomData<Comm>
+pub struct MultiExponentiation<
+    'a,
+    F: Field,
+    Enc: HomomorphicEncryptionScheme<F>,
+    Comm: HomomorphicCommitmentScheme<F>,
+> {
+    _field: PhantomData<&'a F>,
+    _encryption_scheme: PhantomData<&'a Enc>,
+    _commitment_scheme: PhantomData<&'a Comm>,
 }
 
-// impl ArgumentOfKnowledge for MultiExponentiation {
-    
+// impl<'a, F, Enc, Comm> ArgumentOfKnowledge for MultiExponentiation<'a, F, Enc, Comm>
+// where
+//     F: Field,
+//     Enc: HomomorphicEncryptionScheme<F>,
+//     Comm: HomomorphicCommitmentScheme<F>,
+// {
+//     type CommonReferenceString = Parameters<'a, F, Enc, Comm>;
+//     type Statement = Statement<'a, F, Enc, Comm>;
+//     type Witness = Witness<'a, F>;
+//     type Proof = proof::Proof<F, Enc, Comm>;
+
+//     // fn setup<R: Rng>(rng: &mut R) -> Result<Self::CommonReferenceString, CryptoError> {
+//     //     let encrypt_parameters = Enc::setup(rng);
+//     //     let (pk, _) =
+//     // }
+
+//     fn prove(
+//         common_reference_string: &Self::CommonReferenceString,
+//         statement: &Self::Statement,
+//         witness: &Self::Witness,
+//     ) -> Result<Self::Proof, CryptoError> {
+//         let prover = prover::Prover::new(&common_reference_string, &statement, &witness);
+//         let proof = prover.prove()?;
+
+//         Ok(proof)
+//     }
+
+//     fn verify(
+//         common_reference_string: &Self::CommonReferenceString,
+//         statement: &Self::Statement,
+//         proof: &Self::Proof,
+//     ) -> Result<(), CryptoError> {
+//         proof.verify(&common_reference_string, &statement)
+//     }
 // }
 
 /// Parameters for the multi-exponentiation argument. Contains the encryption public key, a commitment key
@@ -24,6 +64,7 @@ where
     Enc: HomomorphicEncryptionScheme<F>,
     Comm: HomomorphicCommitmentScheme<F>,
 {
+    pub encrypt_parameters: &'a Enc::Parameters,
     pub public_key: &'a Enc::PublicKey,
     pub commit_key: &'a Comm::CommitKey,
     pub generator: Enc::Plaintext,
@@ -36,11 +77,13 @@ where
     Comm: HomomorphicCommitmentScheme<F>,
 {
     pub fn new(
+        encrypt_parameters: &'a Enc::Parameters,
         public_key: &'a Enc::PublicKey,
         commit_key: &'a Comm::CommitKey,
         generator: Enc::Plaintext,
     ) -> Self {
         Self {
+            encrypt_parameters,
             public_key,
             commit_key,
             generator,
@@ -50,27 +93,23 @@ where
 
 /// Witness for the multi-exponentiation argument. Contains a hidden n-by-m matrix A, a vector of randoms r used to commit to
 /// the columns of A and an aggregate re-encryption factor rho
-pub struct Witness<'a, F, Enc, Comm>
+pub struct Witness<'a, Scalar>
 where
-    F: Field,
-    Enc: HomomorphicEncryptionScheme<F>,
-    Comm: HomomorphicCommitmentScheme<F>,
+    Scalar: Field,
 {
-    pub matrix_a: &'a Vec<Vec<Comm::Scalar>>,
-    pub matrix_blinders: &'a Vec<Comm::Scalar>,
-    pub rho: Enc::Randomness,
+    pub matrix_a: &'a Vec<Vec<Scalar>>,
+    pub matrix_blinders: &'a Vec<Scalar>,
+    pub rho: Scalar,
 }
 
-impl<'a, F, Enc, Comm> Witness<'a, F, Enc, Comm>
+impl<'a, Scalar> Witness<'a, Scalar>
 where
-    F: Field,
-    Enc: HomomorphicEncryptionScheme<F>,
-    Comm: HomomorphicCommitmentScheme<F>,
+    Scalar: Field,
 {
     pub fn new(
-        matrix_a: &'a Vec<Vec<Comm::Scalar>>,
-        matrix_blinders: &'a Vec<Comm::Scalar>,
-        rho: Enc::Randomness,
+        matrix_a: &'a Vec<Vec<Scalar>>,
+        matrix_blinders: &'a Vec<Scalar>,
+        rho: Scalar,
     ) -> Self {
         Self {
             matrix_a,
@@ -83,22 +122,22 @@ where
 /// Statement for the multi-exponentiation argument. Contains an m-by-n matrix of ciphertexts matC, a ciphertext C
 /// and a vector of commitments to the columns of a hidden n-by-m matrix A (see `Witness`) such that:
 /// C is the aggregation of the re-encrypted ciphertexts using the blinding factors found in A.
-pub struct Statement<'a, F, Enc, Comm>
+pub struct Statement<'a, Scalar, Enc, Comm>
 where
-    F: Field,
-    Enc: HomomorphicEncryptionScheme<F>,
-    Comm: HomomorphicCommitmentScheme<F>,
+    Scalar: Field,
+    Enc: HomomorphicEncryptionScheme<Scalar>,
+    Comm: HomomorphicCommitmentScheme<Scalar>,
 {
     pub shuffled_ciphers: &'a Vec<Vec<Enc::Ciphertext>>,
     pub product: Enc::Ciphertext,
     pub commitments_to_exponents: &'a Vec<Comm::Commitment>,
 }
 
-impl<'a, F, Enc, Comm> Statement<'a, F, Enc, Comm>
+impl<'a, Scalar, Enc, Comm> Statement<'a, Scalar, Enc, Comm>
 where
-    F: Field,
-    Enc: HomomorphicEncryptionScheme<F>,
-    Comm: HomomorphicCommitmentScheme<F>,
+    Scalar: Field,
+    Enc: HomomorphicEncryptionScheme<Scalar>,
+    Comm: HomomorphicCommitmentScheme<Scalar>,
 {
     pub fn new(
         shuffled_ciphers: &'a Vec<Vec<Enc::Ciphertext>>,

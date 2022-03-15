@@ -4,8 +4,7 @@ use crate::zkp::transcript::TranscriptProtocol;
 
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::PrimeField;
-use ark_std::rand::thread_rng;
-use ark_std::UniformRand;
+use ark_std::{rand::thread_rng, UniformRand};
 use merlin::Transcript;
 
 use std::marker::PhantomData;
@@ -43,7 +42,7 @@ where
 
         let c: C::ScalarField = transcript.challenge_scalar(b"c");
 
-        let r = omega + c * witness.secret_exponent;
+        let r = omega + c * witness;
 
         Proof { a, b, r }
     }

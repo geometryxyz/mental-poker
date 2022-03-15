@@ -2,61 +2,51 @@
 mod test {
 
     use crate::error::CryptoError;
-    use crate::zkp::proofs::schnorr_identification;
-    use crate::zkp::proofs::schnorr_identification::SchnorrIdentification;
-    use crate::zkp::ArgumentOfKnowledge;
-    use ark_ec::AffineCurve;
+    use crate::zkp::{proofs::schnorr_identification, ArgumentOfKnowledge};
+    use ark_ec::{AffineCurve, ProjectiveCurve};
     use ark_std::rand::thread_rng;
     use ark_std::UniformRand;
+    use rand::Rng;
     use starknet_curve;
+
+    type Curve = starknet_curve::Projective;
+    type Schnorr<'a> = schnorr_identification::SchnorrIdentification<'a, Curve>;
+    type Scalar = starknet_curve::Fr;
+    type Parameters = schnorr_identification::Parameters<Curve>;
+
+    fn setup<R: Rng>(rng: &mut R) -> Result<Parameters, CryptoError> {
+        Ok(Curve::rand(rng).into_affine())
+    }
 
     #[test]
     fn test_honest_prover() {
         let mut rng = thread_rng();
 
-        let crs = SchnorrIdentification::<starknet_curve::Projective>::setup(&mut rng).unwrap();
+        let crs = setup(&mut rng).unwrap();
 
-        let secret = starknet_curve::Fr::rand(&mut rng);
-        let pk = crs.generator.mul(secret);
+        let secret = Scalar::rand(&mut rng);
+        let pk = crs.mul(secret).into_affine();
 
-        let statement = schnorr_identification::Statement::<starknet_curve::Projective>::new(&pk);
-        let witness = schnorr_identification::Witness::<starknet_curve::Projective>::new(&secret);
+        let proof = Schnorr::prove(&crs, &pk, &secret).unwrap();
 
-        let proof =
-            SchnorrIdentification::<starknet_curve::Projective>::prove(&crs, &statement, &witness)
-                .unwrap();
-
-        assert_eq!(
-            SchnorrIdentification::<starknet_curve::Projective>::verify(&crs, &statement, &proof),
-            Ok(())
-        );
+        assert_eq!(Schnorr::verify(&crs, &pk, &proof), Ok(()));
     }
 
     #[test]
     fn test_malicious_prover() {
         let mut rng = thread_rng();
 
-        let crs = SchnorrIdentification::<starknet_curve::Projective>::setup(&mut rng).unwrap();
+        let crs = setup(&mut rng).unwrap();
 
-        let secret = starknet_curve::Fr::rand(&mut rng);
-        let pk = crs.generator.mul(secret);
+        let secret = Scalar::rand(&mut rng);
+        let pk = crs.mul(secret).into_affine();
 
-        let another_scalar = starknet_curve::Fr::rand(&mut rng);
+        let another_scalar = Scalar::rand(&mut rng);
 
-        let statement = schnorr_identification::Statement::<starknet_curve::Projective>::new(&pk);
-        let witness =
-            schnorr_identification::Witness::<starknet_curve::Projective>::new(&another_scalar);
-
-        let invalid_proof =
-            SchnorrIdentification::<starknet_curve::Projective>::prove(&crs, &statement, &witness)
-                .unwrap();
+        let invalid_proof = Schnorr::prove(&crs, &pk, &another_scalar).unwrap();
 
         assert_eq!(
-            SchnorrIdentification::<starknet_curve::Projective>::verify(
-                &crs,
-                &statement,
-                &invalid_proof
-            ),
+            Schnorr::verify(&crs, &pk, &invalid_proof),
             Err(CryptoError::ProofVerificationError(String::from(
                 "Schnorr Identification"
             )))

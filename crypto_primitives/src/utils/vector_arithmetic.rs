@@ -1,141 +1,92 @@
-use crate::error::UtilError;
-use crate::homomorphic_encryption::el_gamal;
-use crate::utils::ops::{ToField, FromField, MulByScalar};
-use ark_ec::ProjectiveCurve;
-use ark_ff::PrimeField;
-use std::marker::PhantomData;
-use std::ops::Add;
+use crate::error::CryptoError;
+use ark_ff::Field;
+use std::iter::Sum;
+use std::ops::Mul;
 
-
-pub trait DotProduct<C: ProjectiveCurve> {
-    type Scalar: ToField<C::ScalarField> + FromField<C::ScalarField>;
-    type Point;
-    type Ciphertext: Add + MulByScalar<C::ScalarField, Self::Scalar>;
-
-    fn scalars_by_ciphers(
-        scalars: &Vec<Self::Scalar>,
-        ciphers: &Vec<Self::Ciphertext>,
-    ) -> Result<Self::Ciphertext, UtilError>;
-
-    fn scalars_by_points(
-        scalars: &Vec<Self::Scalar>,
-        points: &Vec<Self::Point>,
-    ) -> Result<Self::Point, UtilError>;
-
-    fn scalars_by_scalars(
-        scalars_a: &Vec<Self::Scalar>,
-        scalar_b: &Vec<Self::Scalar>,
-    ) -> Result<Self::Scalar, UtilError>;
-}
-
-pub struct DotProductCalculator<C: ProjectiveCurve> {
-    _curve: PhantomData<C>,
-}
-
-impl<F: Field> DotProduct<F> for DotProductCalculator<F> {
-    type Scalar = ;
-    type Point = C;
-    type Ciphertext = el_gamal::Ciphertext<C>;
-
-    fn scalars_by_ciphers(
-        scalars: &Vec<Self::Scalar>,
-        ciphers: &Vec<Self::Ciphertext>,
-    ) -> Result<Self::Ciphertext, UtilError> {
-        if ciphers.len() != scalars.len() {
-            return Err(UtilError::LengthError(
-                String::from("Dot Product"),
-                ciphers.len(),
-                scalars.len(),
-            ));
-        }
-
-        let dot_product: Self::Ciphertext = ciphers
-            .iter()
-            .zip(scalars.iter())
-            .map(|(cipher, &scalar)| cipher.mul(scalar))
-            .sum();
-
-        Ok(dot_product)
+/// Compute the dot product (inner product) of two vectors
+pub fn dot_product<S, T>(scalars: &Vec<S>, rhs: &Vec<T>) -> Result<T, CryptoError>
+where
+    S: Field,
+    T: Copy + Sum<T> + Mul<S, Output = T>,
+{
+    if scalars.len() != rhs.len() {
+        return Err(CryptoError::DotProductLengthError(scalars.len(), rhs.len()));
     }
 
-    // TODO: Benchmark this implementation against a VariableMSM implementation
-    fn scalars_by_points(
-        scalars: &Vec<Self::Scalar>,
-        points: &Vec<Self::Point>,
-    ) -> Result<Self::Point, UtilError> {
-        if points.len() != scalars.len() {
-            return Err(UtilError::LengthError(
-                String::from("Dot Product"),
-                points.len(),
-                scalars.len(),
-            ));
-        }
+    Ok(rhs
+        .iter()
+        .zip(scalars.iter())
+        .map(|(&rhs_entry, &scalar_entry)| rhs_entry * scalar_entry)
+        .sum())
+}
 
-        let dot_product: Self::Point = points
-            .iter()
-            .zip(scalars.iter())
-            .map(|(&point, scalar)| point.mul(scalar))
-            .sum();
-
-        Ok(dot_product)
+// Compute the Hadamard product (elemet-wise multiplication) of two vectors
+pub fn hadamard_product<S: Field>(scalars: &Vec<S>, rhs: &Vec<S>) -> Result<Vec<S>, CryptoError> {
+    if scalars.len() != rhs.len() {
+        return Err(CryptoError::HadamardProductLengthError(
+            scalars.len(),
+            rhs.len(),
+        ));
     }
 
-    fn scalars_by_scalars(
-        scalars_a: &Vec<Self::Scalar>,
-        scalars_b: &Vec<Self::Scalar>,
-    ) -> Result<Self::Scalar, UtilError> {
-        if scalars_a.len() != scalars_b.len() {
-            return Err(UtilError::LengthError(
-                String::from("Dot Product"),
-                scalars_a.len(),
-                scalars_b.len(),
-            ));
-        }
+    Ok(rhs
+        .iter()
+        .zip(scalars.iter())
+        .map(|(&rhs_entry, &scalar_entry)| rhs_entry.mul(scalar_entry))
+        .collect())
+}
 
-        let dot_product: Self::Scalar = scalars_a
-            .iter()
-            .zip(scalars_b.iter())
-            .map(|(s_a, s_b)| *s_a * *s_b)
-            .sum();
-
-        Ok(dot_product)
+/// Reshape a vector of length N into a matrix of m-by-n. Requires that N = m*n
+pub fn reshape<T: Clone>(
+    in_vector: &Vec<T>,
+    m: usize,
+    n: usize,
+) -> Result<Vec<Vec<T>>, CryptoError> {
+    if in_vector.len() != m * n {
+        return Err(CryptoError::VectorCastingError(in_vector.len(), m, n));
     }
+
+    Ok(in_vector.chunks(n).map(|c| c.to_vec()).collect::<Vec<_>>())
 }
 
-pub trait HadamardProduct<C: ProjectiveCurve> {
-    type Scalar;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::homomorphic_encryption::el_gamal;
+    use crate::utils::rand::sample_vector;
+    use ark_ff::{One, Zero};
+    use ark_std::rand::thread_rng;
+    use starknet_curve;
 
-    fn scalars_by_scalars(
-        scalars_a: &Vec<Self::Scalar>,
-        scalars_b: &Vec<Self::Scalar>,
-    ) -> Result<Vec<Self::Scalar>, UtilError>;
-}
+    type Scalar = starknet_curve::Fr;
+    type Curve = starknet_curve::Projective;
+    type Ciphertext = el_gamal::Ciphertext<Curve>;
 
-pub struct HadamardProductCalculator<C: ProjectiveCurve> {
-    _curve: PhantomData<C>,
-}
+    #[test]
+    fn dot_product_test() {
+        let rng = &mut thread_rng();
+        let n = 5;
 
-impl<C: ProjectiveCurve> HadamardProduct<C> for HadamardProductCalculator<C> {
-    type Scalar = C::ScalarField;
+        let scalars: Vec<Scalar> = sample_vector(rng, n);
+        let ciphers: Vec<Ciphertext> = sample_vector(rng, n);
 
-    fn scalars_by_scalars(
-        scalars_a: &Vec<Self::Scalar>,
-        scalars_b: &Vec<Self::Scalar>,
-    ) -> Result<Vec<Self::Scalar>, UtilError> {
-        if scalars_a.len() != scalars_b.len() {
-            return Err(UtilError::LengthError(
-                String::from("Hadamard Product"),
-                scalars_a.len(),
-                scalars_b.len(),
-            ));
-        }
+        dot_product(&scalars, &ciphers).unwrap();
+    }
 
-        let hadamard_product: Vec<Self::Scalar> = scalars_a
-            .iter()
-            .zip(scalars_b.iter())
-            .map(|(&s_a, &s_b)| s_a * s_b)
-            .collect();
+    #[test]
+    fn hadamard_product_test() {
+        let rng = &mut thread_rng();
+        let n = 5;
 
-        Ok(hadamard_product)
+        let scalars: Vec<Scalar> = sample_vector(rng, n);
+        let other_scalars: Vec<Scalar> = sample_vector(rng, n);
+
+        hadamard_product(&scalars, &other_scalars).unwrap();
+
+        let zeros = vec![Scalar::zero(); n];
+        assert_eq!(zeros, hadamard_product(&zeros, &scalars).unwrap());
+
+        let ones = vec![Scalar::one(); n];
+        assert_eq!(scalars, hadamard_product(&ones, &scalars).unwrap());
     }
 }

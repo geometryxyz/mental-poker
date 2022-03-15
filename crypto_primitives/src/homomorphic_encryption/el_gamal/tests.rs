@@ -1,17 +1,18 @@
 #[cfg(test)]
 mod test {
     use super::super::super::{el_gamal, HomomorphicEncryptionScheme};
-    use crate::utils::ops::MulByScalar;
-    use crate::utils::rand::RandomSampler;
+    use crate::utils::rand::sample_vector;
+
     use ark_std::rand::thread_rng;
     use starknet_curve;
+    use std::ops::Mul;
 
     // Define type aliases for succinctness
     type Curve = starknet_curve::Projective;
+    type Scalar = starknet_curve::Fr;
     type ElGamal = el_gamal::ElGamal<Curve>;
     type Plaintext = el_gamal::Plaintext<Curve>;
-    type Randomness = el_gamal::Randomness<Curve>;
-    type SecretKey = el_gamal::SecretKey<Curve>;
+    use ark_std::UniformRand;
 
     #[test]
     fn valid_encrypt_decrypt() {
@@ -21,8 +22,8 @@ mod test {
         let parameters = ElGamal::setup(rng).unwrap();
         let (pk, sk) = ElGamal::keygen(&parameters, rng).unwrap();
 
-        let messages = RandomSampler::<Plaintext>::sample_vector(rng, n);
-        let randoms = RandomSampler::<Randomness>::sample_vector(rng, n);
+        let messages: Vec<Plaintext> = sample_vector(rng, n);
+        let randoms: Vec<Scalar> = sample_vector(rng, n);
 
         let encrypted = messages
             .iter()
@@ -47,8 +48,8 @@ mod test {
         let parameters = ElGamal::setup(rng).unwrap();
         let (pk, _) = ElGamal::keygen(&parameters, rng).unwrap();
 
-        let messages = RandomSampler::<Plaintext>::sample_vector(rng, n);
-        let randoms = RandomSampler::<Randomness>::sample_vector(rng, n);
+        let messages: Vec<Plaintext> = sample_vector(rng, n);
+        let randoms: Vec<Scalar> = sample_vector(rng, n);
 
         let encrypted = messages
             .iter()
@@ -56,7 +57,7 @@ mod test {
             .map(|(m, r)| ElGamal::encrypt(&parameters, &pk, m, r).unwrap())
             .collect::<Vec<_>>();
 
-        let wrong_sk = RandomSampler::<SecretKey>::sample_item(rng);
+        let wrong_sk = Scalar::rand(rng);
 
         let decrypted = encrypted
             .iter()
@@ -76,16 +77,16 @@ mod test {
         let parameters = ElGamal::setup(rng).unwrap();
         let (pk, sk) = ElGamal::keygen(&parameters, rng).unwrap();
 
-        let m1 = RandomSampler::<Plaintext>::sample_item(rng);
-        let r1 = RandomSampler::<Randomness>::sample_item(rng);
+        let m1 = Plaintext::rand(rng);
+        let r1 = Scalar::rand(rng);
         let c1 = ElGamal::encrypt(&parameters, &pk, &m1, &r1).unwrap();
 
-        let m2 = RandomSampler::<Plaintext>::sample_item(rng);
-        let r2 = RandomSampler::<Randomness>::sample_item(rng);
+        let m2 = Plaintext::rand(rng);
+        let r2 = Scalar::rand(rng);
         let c2 = ElGamal::encrypt(&parameters, &pk, &m2, &r2).unwrap();
 
-        let alpha = RandomSampler::<Randomness>::sample_item(rng);
-        let beta = RandomSampler::<Randomness>::sample_item(rng);
+        let alpha = Scalar::rand(rng);
+        let beta = Scalar::rand(rng);
 
         let m3 = m1.mul(alpha) + m2.mul(beta);
         let c3 = c1.mul(alpha) + c2.mul(beta);

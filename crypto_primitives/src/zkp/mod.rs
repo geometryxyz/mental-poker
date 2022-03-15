@@ -1,5 +1,5 @@
 use crate::error::CryptoError;
-use ark_std::rand::Rng;
+// use ark_std::rand::Rng;
 
 pub mod arguments;
 pub mod proofs;
@@ -11,7 +11,7 @@ pub trait ArgumentOfKnowledge {
     type Witness;
     type Proof;
 
-    fn setup<R: Rng>(rng: &mut R) -> Result<Self::CommonReferenceString, CryptoError>;
+    // fn setup<R: Rng>(rng: &mut R) -> Result<Self::CommonReferenceString, CryptoError>;
 
     fn prove(
         common_reference_string: &Self::CommonReferenceString,

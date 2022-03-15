@@ -1,22 +1,19 @@
 use super::{Parameters, Statement};
+
 use crate::error::CryptoError;
 use crate::homomorphic_encryption::HomomorphicEncryptionScheme;
+use crate::utils::vector_arithmetic::dot_product;
 use crate::vector_commitment::HomomorphicCommitmentScheme;
-use crate::zkp::transcript::TranscriptProtocol;
-use ark_crypto_primitives::encryption::elgamal::{Randomness};
-use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{One, PrimeField, Zero, Field};
-use merlin::Transcript;
-use std::iter;
-use crate::utils::ops::{FromField};
-use crate::zkp::arguments::scalar_powers;
-// use crate::zkp::scalar_powers;
+use crate::zkp::{arguments::scalar_powers, transcript::TranscriptProtocol};
 
-pub struct Proof<F, Enc, Comm>
+use ark_ff::{Field, Zero};
+use merlin::Transcript;
+
+pub struct Proof<Scalar, Enc, Comm>
 where
-    F: Field,
-    Enc: HomomorphicEncryptionScheme<F>,
-    Comm: HomomorphicCommitmentScheme<F>,
+    Scalar: Field,
+    Enc: HomomorphicEncryptionScheme<Scalar>,
+    Comm: HomomorphicCommitmentScheme<Scalar>,
 {
     // Round 1
     pub(crate) a_0_commit: Comm::Commitment,
@@ -24,23 +21,23 @@ where
     pub(crate) vector_e_k: Vec<Enc::Ciphertext>,
 
     // Round 2
-    pub(crate) r_blinded: Comm::Scalar,
-    pub(crate) b_blinded: Comm::Scalar,
-    pub(crate) s_blinded: Comm::Scalar,
-    pub(crate) tau_blinded: Comm::Scalar,
-    pub(crate) a_blinded: Vec<Comm::Scalar>,
+    pub(crate) r_blinded: Scalar,
+    pub(crate) b_blinded: Scalar,
+    pub(crate) s_blinded: Scalar,
+    pub(crate) tau_blinded: Scalar,
+    pub(crate) a_blinded: Vec<Scalar>,
 }
 
-impl<F, Enc, Comm> Proof<F, Enc, Comm>
+impl<Scalar, Enc, Comm> Proof<Scalar, Enc, Comm>
 where
-    F: Field,
-    Enc: HomomorphicEncryptionScheme<F>,
-    Comm: HomomorphicCommitmentScheme<F>,
+    Scalar: Field,
+    Enc: HomomorphicEncryptionScheme<Scalar>,
+    Comm: HomomorphicCommitmentScheme<Scalar>,
 {
     pub fn verify(
         &self,
-        proof_parameters: &Parameters<F, Enc, Comm>,
-        statement: &Statement<F, Enc, Comm>,
+        proof_parameters: &Parameters<Scalar, Enc, Comm>,
+        statement: &Statement<Scalar, Enc, Comm>,
     ) -> Result<(), CryptoError> {
         let m = statement.shuffled_ciphers.len();
         let n = statement.shuffled_ciphers[0].len();
@@ -68,85 +65,68 @@ where
         transcript.append(b"commit_B_k", &self.commit_b_k);
         transcript.append(b"vector_E_k", &self.vector_e_k);
 
-        let challenge = Comm::Scalar::from_field(transcript.challenge_scalar(b"x"));
+        let challenge = transcript.challenge_scalar(b"x");
 
         // Precompute all powers of the challenge from 0 to number_of_diagonals
-        let challenge_powers = iter::once(C::ScalarField::one())
-            .chain(iter::once(challenge))
-            .chain(
-                (1..num_of_diagonals).scan(challenge, |current_power, _exp| {
-                    *current_power *= challenge;
-                    Some(*current_power)
-                }),
-            )
-            .collect::<Vec<_>>();
-        // let challenge_powers = scalar_powers<F>()
+        let challenge_powers = scalar_powers(challenge, num_of_diagonals);
 
         // take vector x: x, x^2, x^3, ..., x^m
         let x_array = challenge_powers[1..m + 1].to_vec();
 
-        // assert_eq!(
-        //     self.commit_b_k[m],
-        //     PedersenCommitment::<C>::commit_scalar(proof_parameters.commit_key[0], *proof_parameters.commit_key.last().unwrap(), C::ScalarField::zero(), C::ScalarField::zero())
-        // );
-
         let left = self.commit_b_k[m];
-        let right = PedersenCommitment::<C>::commit_scalar(
-            proof_parameters.commit_key[0],
-            *proof_parameters.commit_key.last().unwrap(),
-            C::ScalarField::zero(),
-            C::ScalarField::zero(),
-        );
+        let right = Comm::commit(
+            proof_parameters.commit_key,
+            &vec![Scalar::zero()],
+            Scalar::zero(),
+        )?;
 
         if left != right {
-            return Err(Error::MultiExpVerficationError);
+            return Err(CryptoError::ProofVerificationError(String::from(
+                "Multi Exponentiation",
+            )));
         }
 
         if self.vector_e_k[m] != statement.product {
-            return Err(Error::MultiExpVerficationError);
+            return Err(CryptoError::ProofVerificationError(String::from(
+                "Multi Exponentiation",
+            )));
         }
 
-        let c_a_x = DotProductCalculator::<C>::scalars_by_points(
-            &x_array,
-            &statement.commitments_to_exponents,
-        )
-        .unwrap();
-        let verifier_commit_a = PedersenCommitment::<C>::commit_vector(
+        let c_a_x = dot_product(&x_array, &statement.commitments_to_exponents)?;
+        let verifier_commit_a = Comm::commit(
             &proof_parameters.commit_key,
             &self.a_blinded,
             self.r_blinded,
-        );
+        )?;
 
-        if c_a_x + self.a_0_commit != verifier_commit_a {
-            return Err(Error::MultiExpVerficationError);
+        let left = c_a_x + self.a_0_commit;
+        if left != verifier_commit_a {
+            return Err(CryptoError::ProofVerificationError(String::from(
+                "Multi Exponentiation",
+            )));
         }
 
-        let c_b_k =
-            DotProductCalculator::<C>::scalars_by_points(&challenge_powers, &self.commit_b_k)
-                .unwrap();
-        let verif_commit_b = PedersenCommitment::<C>::commit_scalar(
-            proof_parameters.commit_key[0],
-            *proof_parameters.commit_key.last().unwrap(),
-            self.b_blinded,
+        let c_b_k = dot_product(&challenge_powers, &self.commit_b_k)?;
+        let verif_commit_b = Comm::commit(
+            proof_parameters.commit_key,
+            &vec![self.b_blinded],
             self.s_blinded,
-        );
+        )?;
         if c_b_k != verif_commit_b {
-            return Err(Error::MultiExpVerficationError);
+            return Err(CryptoError::ProofVerificationError(String::from(
+                "Multi Exponentiation",
+            )));
         }
 
-        let sum_e_k =
-            DotProductCalculator::<C>::scalars_by_ciphers(&challenge_powers, &self.vector_e_k)
-                .unwrap();
-        let aggregate_masking_cipher = DiscreteLogVTMF::<C>::mask(
-            encryption_parameters,
+        let sum_e_k = dot_product(&challenge_powers, &self.vector_e_k)?;
+
+        let message = proof_parameters.generator * self.b_blinded;
+        let aggregate_masking_cipher = Enc::encrypt(
+            &proof_parameters.encrypt_parameters,
             &proof_parameters.public_key,
-            &proof_parameters
-                .masking_generator
-                .mul(self.b_blinded.into_repr())
-                .into_affine(),
-            &Randomness(self.tau_blinded),
-        )
-        .unwrap();
+            &message,
+            &self.tau_blinded,
+        )?;
 
         /*
             c1 * x^m-1; x[m-1]
@@ -156,25 +136,32 @@ where
             cm * x^m-m; x[0]
         */
 
-        let verif_rhs: ElgamalCipher<C> = challenge_powers
+        let verif_rhs: Result<Vec<Enc::Ciphertext>, CryptoError> = challenge_powers
             .iter()
             .take(m)
             .rev()
             .zip(statement.shuffled_ciphers.iter())
-            .map(|(power_of_x, cipher_chunk)| {
-                // x^m - i * a_vec
-                let xm_minus_i_times_a = self
-                    .a_blinded
-                    .iter()
-                    .map(|element_of_a| *element_of_a * *power_of_x)
-                    .collect::<Vec<C::ScalarField>>();
-                DotProductCalculator::<C>::scalars_by_ciphers(&xm_minus_i_times_a, cipher_chunk)
-                    .unwrap()
-            })
-            .sum();
+            .map(
+                |(power_of_x, cipher_chunk)| -> Result<Enc::Ciphertext, CryptoError> {
+                    // x^m - i * a_vec
+                    let xm_minus_i_times_a = self
+                        .a_blinded
+                        .iter()
+                        .map(|element_of_a| *element_of_a * *power_of_x)
+                        .collect::<_>();
+                    let dot_p = dot_product(&xm_minus_i_times_a, cipher_chunk)?;
+                    Ok(dot_p)
+                },
+            )
+            .collect();
 
+        let verif_rhs = verif_rhs?
+            .iter()
+            .fold(Enc::Ciphertext::zero(), |acc, &x| acc + x);
         if sum_e_k != aggregate_masking_cipher + verif_rhs {
-            return Err(Error::MultiExpVerficationError);
+            return Err(CryptoError::ProofVerificationError(String::from(
+                "Multi Exponentiation",
+            )));
         }
 
         Ok(())

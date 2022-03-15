@@ -6,15 +6,26 @@ mod test {
     use crate::zkp::proofs::chaum_pedersen_dl_equality::DLEquality;
     use crate::zkp::ArgumentOfKnowledge;
     use ark_ec::{AffineCurve, ProjectiveCurve};
-    use ark_std::rand::thread_rng;
-    use ark_std::UniformRand;
+    use ark_std::{rand::thread_rng, UniformRand};
+    use rand::Rng;
     use starknet_curve;
+
+    type Curve = starknet_curve::Projective;
+    type Parameters = chaum_pedersen_dl_equality::Parameters<Curve>;
+
+    fn setup<R: Rng>(rng: &mut R) -> Result<Parameters, CryptoError> {
+        let generator1 = Curve::rand(rng).into_affine();
+        let generator2 = Curve::rand(rng).into_affine();
+        let parameters = Parameters::new(generator1, generator2);
+
+        Ok(parameters)
+    }
 
     #[test]
     fn test_honest_prover() {
         let mut rng = thread_rng();
 
-        let crs = DLEquality::<starknet_curve::Projective>::setup(&mut rng).unwrap();
+        let crs = setup(&mut rng).unwrap();
 
         let secret = starknet_curve::Fr::rand(&mut rng);
         let point_a = crs.g.mul(secret).into_affine();
@@ -23,11 +34,9 @@ mod test {
         let statement = chaum_pedersen_dl_equality::Statement::<starknet_curve::Projective>::new(
             &point_a, &point_b,
         );
-        let witness =
-            chaum_pedersen_dl_equality::Witness::<starknet_curve::Projective>::new(&secret);
 
         let proof =
-            DLEquality::<starknet_curve::Projective>::prove(&crs, &statement, &witness).unwrap();
+            DLEquality::<starknet_curve::Projective>::prove(&crs, &statement, &secret).unwrap();
 
         assert_eq!(
             DLEquality::<starknet_curve::Projective>::verify(&crs, &statement, &proof),
@@ -39,7 +48,7 @@ mod test {
     fn test_malicious_prover() {
         let mut rng = thread_rng();
 
-        let crs = DLEquality::<starknet_curve::Projective>::setup(&mut rng).unwrap();
+        let crs = setup(&mut rng).unwrap();
 
         let secret = starknet_curve::Fr::rand(&mut rng);
         let point_a = crs.g.mul(secret).into_affine();
@@ -50,11 +59,10 @@ mod test {
         let statement = chaum_pedersen_dl_equality::Statement::<starknet_curve::Projective>::new(
             &point_a, &point_b,
         );
-        let witness =
-            chaum_pedersen_dl_equality::Witness::<starknet_curve::Projective>::new(&another_scalar);
 
         let invalid_proof =
-            DLEquality::<starknet_curve::Projective>::prove(&crs, &statement, &witness).unwrap();
+            DLEquality::<starknet_curve::Projective>::prove(&crs, &statement, &another_scalar)
+                .unwrap();
 
         assert_eq!(
             DLEquality::<starknet_curve::Projective>::verify(&crs, &statement, &invalid_proof),
@@ -83,12 +91,13 @@ mod test {
         let statement = chaum_pedersen_dl_equality::Statement::<starknet_curve::Projective>::new(
             &point_a, &point_b,
         );
-        let witness = chaum_pedersen_dl_equality::Witness::<starknet_curve::Projective>::new(
-            &secret_masking_factor,
-        );
 
-        let proof =
-            DLEquality::<starknet_curve::Projective>::prove(&crs, &statement, &witness).unwrap();
+        let proof = DLEquality::<starknet_curve::Projective>::prove(
+            &crs,
+            &statement,
+            &secret_masking_factor,
+        )
+        .unwrap();
 
         assert_eq!(
             DLEquality::<starknet_curve::Projective>::verify(&crs, &statement, &proof),

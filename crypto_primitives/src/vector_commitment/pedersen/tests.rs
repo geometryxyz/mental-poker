@@ -1,16 +1,16 @@
 #[cfg(test)]
 mod test {
-    use crate::utils::rand::RandomSampler;
-    use crate::vector_commitment::HomomorphicCommitmentScheme;
-    use crate::vector_commitment::{pedersen, pedersen::PedersenCommitment};
+    use crate::utils::rand::sample_vector;
+    use crate::vector_commitment::{pedersen, HomomorphicCommitmentScheme};
     use ark_ff::Zero;
-    use ark_std::rand::thread_rng;
+    use ark_std::{rand::thread_rng, UniformRand};
     use starknet_curve;
+    use std::ops::Mul;
 
     // Define type aliases for succinctness
     type Curve = starknet_curve::Projective;
-    type Scalar = pedersen::Scalar<Curve>;
-    type Pedersen = PedersenCommitment<Curve>;
+    type Scalar = starknet_curve::Fr;
+    type Pedersen = pedersen::PedersenCommitment<Curve>;
 
     #[test]
     fn additive_homomorphism() {
@@ -19,23 +19,29 @@ mod test {
 
         let commit_key = Pedersen::setup(rng, n);
 
-        let r1 = RandomSampler::<Scalar>::sample_item(rng);
-        let r2 = RandomSampler::<Scalar>::sample_item(rng);
+        let r1 = Scalar::rand(rng);
+        let r2 = Scalar::rand(rng);
 
-        let v1 = RandomSampler::<Scalar>::sample_vector(rng, n);
-        let v2 = RandomSampler::<Scalar>::sample_vector(rng, n);
+        let v1: Vec<Scalar> = sample_vector(rng, n);
+        let v2: Vec<Scalar> = sample_vector(rng, n);
+
+        let alpha = Scalar::rand(rng);
+        let beta = Scalar::rand(rng);
 
         let v3 = v1
             .iter()
             .zip(v2.iter())
-            .map(|(&a, &b)| a + b)
+            .map(|(&a, &b)| a * alpha + b * beta)
             .collect::<Vec<_>>();
+        let r3 = alpha * r1 + beta * r2;
 
         let commit_v1 = Pedersen::commit(&commit_key, &v1, r1).unwrap();
         let commit_v2 = Pedersen::commit(&commit_key, &v2, r2).unwrap();
-        let commit_v3 = Pedersen::commit(&commit_key, &v3, r1 + r2).unwrap();
+        let commit_v3 = Pedersen::commit(&commit_key, &v3, r3).unwrap();
 
-        assert_eq!(commit_v1 + commit_v2, commit_v3)
+        let expected = commit_v1.mul(alpha) + commit_v2.mul(beta);
+
+        assert_eq!(expected, commit_v3)
     }
 
     #[test]
@@ -45,9 +51,9 @@ mod test {
 
         let commit_key = Pedersen::setup(rng, n);
 
-        let r = RandomSampler::<Scalar>::sample_item(rng);
+        let r = Scalar::rand(rng);
 
-        let s1 = RandomSampler::<Scalar>::sample_item(rng);
+        let s1 = Scalar::rand(rng);
         let zero = Scalar::zero();
 
         let v1 = vec![s1, zero, zero, zero];
@@ -68,9 +74,9 @@ mod test {
 
         let commit_key = Pedersen::setup(rng, n);
 
-        let r = RandomSampler::<Scalar>::sample_item(rng);
+        let r = Scalar::rand(rng);
 
-        let s1 = RandomSampler::<Scalar>::sample_item(rng);
+        let s1 = Scalar::rand(rng);
 
         let too_long = vec![s1; n + 2];
 
