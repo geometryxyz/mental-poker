@@ -8,7 +8,7 @@ use crate::vector_commitment::HomomorphicCommitmentScheme;
 use crate::zkp::{arguments::scalar_powers, transcript::TranscriptProtocol};
 
 use ark_ff::{Field, Zero};
-use ark_std::rand::thread_rng;
+use ark_std::rand::Rng;
 use merlin::Transcript;
 use std::marker::PhantomData;
 
@@ -48,9 +48,8 @@ where
         }
     }
 
-    pub fn prove(&self) -> Result<Proof<Scalar, Enc, Comm>, CryptoError> {
+    pub fn prove<R: Rng>(&self, rng: &mut R) -> Result<Proof<Scalar, Enc, Comm>, CryptoError> {
         let mut transcript = self.transcript.clone();
-        let rng = &mut thread_rng();
 
         transcript.append(b"public_key", self.parameters.public_key);
         transcript.append(b"commit_key", self.parameters.commit_key);
@@ -104,7 +103,7 @@ where
             .zip(tau.iter())
             .zip(diagonals.iter())
             .map(|((&b_k, tau_k), &d_k)| {
-                let message = self.parameters.generator * b_k;
+                let message = *self.parameters.generator * b_k;
 
                 let encrypted_random = Enc::encrypt(
                     &self.parameters.encrypt_parameters,

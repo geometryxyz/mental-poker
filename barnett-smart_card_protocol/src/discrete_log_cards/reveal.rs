@@ -1,9 +1,28 @@
 use crate::discrete_log_cards::{MaskedCard, Parameters, PlayerSecretKey, PublicKey, RevealToken};
-use crate::{ComputationStatement, Provable, Verifiable};
+use crate::error::CardProtocolError;
+use crate::{ComputationStatement, Provable, Reveal, Verifiable};
 
 use ark_ec::ProjectiveCurve;
+use ark_ff::One;
+use ark_std::rand::Rng;
 use crypto_primitives::error::CryptoError;
+use crypto_primitives::homomorphic_encryption::{el_gamal, el_gamal::ElGamal};
+use std::ops::Mul;
+
 use crypto_primitives::zkp::{proofs::chaum_pedersen_dl_equality, ArgumentOfKnowledge};
+
+impl<C: ProjectiveCurve> Reveal<C::ScalarField, ElGamal<C>> for RevealToken<C> {
+    fn reveal(
+        &self,
+        cipher: &el_gamal::Ciphertext<C>,
+    ) -> Result<el_gamal::Plaintext<C>, CardProtocolError> {
+        let neg_one = -C::ScalarField::one();
+        let negative_token = self.mul(neg_one);
+        let decrypted = negative_token + el_gamal::Plaintext(cipher.1);
+
+        Ok(decrypted)
+    }
+}
 
 pub type Statement<C> =
     ComputationStatement<MaskedCard<C>, RevealToken<C>, (Parameters<C>, PublicKey<C>)>;
@@ -40,12 +59,20 @@ impl<C: ProjectiveCurve> Provable<chaum_pedersen_dl_equality::DLEquality<C>> for
     type Output = Proof<C>;
     type Witness = PlayerSecretKey<C>;
 
-    fn prove(&self, witness: Self::Witness) -> Result<Self::Output, CryptoError> {
+    fn prove<R: Rng>(
+        &self,
+        rng: &mut R,
+        witness: Self::Witness,
+    ) -> Result<Self::Output, CryptoError> {
         let (cp_parameters, cp_statement) = self.to_chaum_pedersen();
 
         // Use witness to prove the statement
-        let cp_proof =
-            chaum_pedersen_dl_equality::DLEquality::prove(&cp_parameters, &cp_statement, &witness)?;
+        let cp_proof = chaum_pedersen_dl_equality::DLEquality::prove(
+            rng,
+            &cp_parameters,
+            &cp_statement,
+            &witness,
+        )?;
 
         Ok(Proof(cp_proof))
     }

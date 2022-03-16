@@ -2,12 +2,12 @@ pub mod proof;
 pub mod prover;
 mod tests;
 
+use crate::error::CryptoError;
 use crate::homomorphic_encryption::HomomorphicEncryptionScheme;
 use crate::vector_commitment::HomomorphicCommitmentScheme;
+use crate::zkp::ArgumentOfKnowledge;
 use ark_ff::Field;
-use ark_std::marker::PhantomData;
-// use crate::error::CryptoError;
-// use crate::zkp::ArgumentOfKnowledge;
+use ark_std::{marker::PhantomData, rand::Rng};
 
 pub struct MultiExponentiation<
     'a,
@@ -20,41 +20,42 @@ pub struct MultiExponentiation<
     _commitment_scheme: PhantomData<&'a Comm>,
 }
 
-// impl<'a, F, Enc, Comm> ArgumentOfKnowledge for MultiExponentiation<'a, F, Enc, Comm>
-// where
-//     F: Field,
-//     Enc: HomomorphicEncryptionScheme<F>,
-//     Comm: HomomorphicCommitmentScheme<F>,
-// {
-//     type CommonReferenceString = Parameters<'a, F, Enc, Comm>;
-//     type Statement = Statement<'a, F, Enc, Comm>;
-//     type Witness = Witness<'a, F>;
-//     type Proof = proof::Proof<F, Enc, Comm>;
+impl<'a, F, Enc, Comm> ArgumentOfKnowledge for MultiExponentiation<'a, F, Enc, Comm>
+where
+    F: Field,
+    Enc: HomomorphicEncryptionScheme<F>,
+    Comm: HomomorphicCommitmentScheme<F>,
+{
+    type CommonReferenceString = Parameters<'a, F, Enc, Comm>;
+    type Statement = Statement<'a, F, Enc, Comm>;
+    type Witness = Witness<'a, F>;
+    type Proof = proof::Proof<F, Enc, Comm>;
 
-//     // fn setup<R: Rng>(rng: &mut R) -> Result<Self::CommonReferenceString, CryptoError> {
-//     //     let encrypt_parameters = Enc::setup(rng);
-//     //     let (pk, _) =
-//     // }
+    // fn setup<R: Rng>(rng: &mut R) -> Result<Self::CommonReferenceString, CryptoError> {
+    //     let encrypt_parameters = Enc::setup(rng);
+    //     let (pk, _) =
+    // }
 
-//     fn prove(
-//         common_reference_string: &Self::CommonReferenceString,
-//         statement: &Self::Statement,
-//         witness: &Self::Witness,
-//     ) -> Result<Self::Proof, CryptoError> {
-//         let prover = prover::Prover::new(&common_reference_string, &statement, &witness);
-//         let proof = prover.prove()?;
+    fn prove<R: Rng>(
+        rng: &mut R,
+        common_reference_string: &Self::CommonReferenceString,
+        statement: &Self::Statement,
+        witness: &Self::Witness,
+    ) -> Result<Self::Proof, CryptoError> {
+        let prover = prover::Prover::new(&common_reference_string, &statement, &witness);
+        let proof = prover.prove(rng)?;
 
-//         Ok(proof)
-//     }
+        Ok(proof)
+    }
 
-//     fn verify(
-//         common_reference_string: &Self::CommonReferenceString,
-//         statement: &Self::Statement,
-//         proof: &Self::Proof,
-//     ) -> Result<(), CryptoError> {
-//         proof.verify(&common_reference_string, &statement)
-//     }
-// }
+    fn verify(
+        common_reference_string: &Self::CommonReferenceString,
+        statement: &Self::Statement,
+        proof: &Self::Proof,
+    ) -> Result<(), CryptoError> {
+        proof.verify(&common_reference_string, &statement)
+    }
+}
 
 /// Parameters for the multi-exponentiation argument. Contains the encryption public key, a commitment key
 /// and a public group generator which will be used for masking.
@@ -67,7 +68,7 @@ where
     pub encrypt_parameters: &'a Enc::Parameters,
     pub public_key: &'a Enc::PublicKey,
     pub commit_key: &'a Comm::CommitKey,
-    pub generator: Enc::Plaintext,
+    pub generator: &'a Enc::Generator,
 }
 
 impl<'a, F, Enc, Comm> Parameters<'a, F, Enc, Comm>
@@ -80,7 +81,7 @@ where
         encrypt_parameters: &'a Enc::Parameters,
         public_key: &'a Enc::PublicKey,
         commit_key: &'a Comm::CommitKey,
-        generator: Enc::Plaintext,
+        generator: &'a Enc::Generator,
     ) -> Self {
         Self {
             encrypt_parameters,

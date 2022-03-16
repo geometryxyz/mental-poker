@@ -36,7 +36,8 @@ mod test {
         );
 
         let proof =
-            DLEquality::<starknet_curve::Projective>::prove(&crs, &statement, &secret).unwrap();
+            DLEquality::<starknet_curve::Projective>::prove(&mut rng, &crs, &statement, &secret)
+                .unwrap();
 
         assert_eq!(
             DLEquality::<starknet_curve::Projective>::verify(&crs, &statement, &proof),
@@ -62,9 +63,13 @@ mod test {
             point_a, point_b,
         );
 
-        let invalid_proof =
-            DLEquality::<starknet_curve::Projective>::prove(&crs, &statement, &another_scalar)
-                .unwrap();
+        let invalid_proof = DLEquality::<starknet_curve::Projective>::prove(
+            &mut rng,
+            &crs,
+            &statement,
+            &another_scalar,
+        )
+        .unwrap();
 
         assert_eq!(
             DLEquality::<starknet_curve::Projective>::verify(&crs, &statement, &invalid_proof),
@@ -95,6 +100,7 @@ mod test {
         );
 
         let proof = DLEquality::<starknet_curve::Projective>::prove(
+            &mut rng,
             &crs,
             &statement,
             &secret_masking_factor,

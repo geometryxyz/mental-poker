@@ -13,6 +13,11 @@ pub trait HomomorphicEncryptionScheme<Scalar: Field> {
     type Parameters: CanonicalSerialize + CanonicalDeserialize;
     type PublicKey: CanonicalSerialize + CanonicalDeserialize;
     type SecretKey: CanonicalSerialize + CanonicalDeserialize;
+    type Generator: Copy
+        + ops::Add
+        + ops::Mul<Scalar, Output = Self::Plaintext>
+        + CanonicalSerialize
+        + CanonicalDeserialize;
 
     /// Represent a plaintext from a generic homomorphic encryption scheme. To manifest the homomorphic
     /// property of the scheme, we require that some arithmetic operations (add and multiply by scalar) are implemented.
@@ -20,7 +25,8 @@ pub trait HomomorphicEncryptionScheme<Scalar: Field> {
         + ops::Add
         + ops::Mul<Scalar, Output = Self::Plaintext>
         + CanonicalSerialize
-        + CanonicalDeserialize;
+        + CanonicalDeserialize
+        + Zero;
 
     /// Represent a ciphertext from a generic homomorphic encryption scheme. To manifest the homomorphic
     /// property of the scheme, we require that some arithmetic operations (add and multiply by scalar) are implemented.

@@ -120,7 +120,7 @@ where
 
         let sum_e_k = dot_product(&challenge_powers, &self.vector_e_k)?;
 
-        let message = proof_parameters.generator * self.b_blinded;
+        let message = *proof_parameters.generator * self.b_blinded;
         let aggregate_masking_cipher = Enc::encrypt(
             &proof_parameters.encrypt_parameters,
             &proof_parameters.public_key,

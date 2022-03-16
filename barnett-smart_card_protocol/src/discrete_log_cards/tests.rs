@@ -47,7 +47,7 @@ mod test {
         let mut expected_shared_key = PublicKey::zero();
 
         for i in 0..n {
-            players.push(CardProtocol::player_keygen(&parameters, rng).unwrap());
+            players.push(CardProtocol::player_keygen(rng, &parameters).unwrap());
             expected_shared_key = expected_shared_key + players[i].0
         }
 
@@ -60,9 +60,9 @@ mod test {
 
         let parameters = CardProtocol::setup(rng).unwrap();
 
-        let (pk, sk) = CardProtocol::player_keygen(&parameters, rng).unwrap();
+        let (pk, sk) = CardProtocol::player_keygen(rng, &parameters).unwrap();
 
-        let p1_keyproof = CardProtocol::prove_key_ownership(&parameters, &pk, &sk).unwrap();
+        let p1_keyproof = CardProtocol::prove_key_ownership(rng, &parameters, &pk, &sk).unwrap();
 
         assert_eq!(
             Ok(()),
@@ -70,7 +70,8 @@ mod test {
         );
 
         let other_key = Scalar::rand(rng);
-        let wrong_proof = CardProtocol::prove_key_ownership(&parameters, &pk, &other_key).unwrap();
+        let wrong_proof =
+            CardProtocol::prove_key_ownership(rng, &parameters, &pk, &other_key).unwrap();
 
         assert_eq!(
             wrong_proof.verify(&parameters.enc_parameters.generator, &pk),
@@ -90,8 +91,13 @@ mod test {
         let proofs = players
             .iter()
             .map(|player| {
-                KeyOwnArg::prove(&parameters.enc_parameters.generator, &player.0, &player.1)
-                    .unwrap()
+                KeyOwnArg::prove(
+                    rng,
+                    &parameters.enc_parameters.generator,
+                    &player.0,
+                    &player.1,
+                )
+                .unwrap()
             })
             .collect::<Vec<ProofKeyOwnership>>();
 
@@ -131,7 +137,7 @@ mod test {
         let some_random = Scalar::rand(rng);
 
         let (masked, masking_proof): (MaskedCard, MaskingProof) =
-            CardProtocol::mask(&parameters, &aggregate_key, &some_card, &some_random).unwrap();
+            CardProtocol::mask(rng, &parameters, &aggregate_key, &some_card, &some_random).unwrap();
 
         let statement = ComputationStatement::new(some_card, masked, (parameters, aggregate_key));
 
@@ -159,9 +165,14 @@ mod test {
         let some_masked_card = MaskedCard::rand(rng);
         let some_random = Scalar::rand(rng);
 
-        let (remasked, remasking_proof): (MaskedCard, RemaskingProof) =
-            CardProtocol::remask(&parameters, &aggregate_key, &some_masked_card, &some_random)
-                .unwrap();
+        let (remasked, remasking_proof): (MaskedCard, RemaskingProof) = CardProtocol::remask(
+            rng,
+            &parameters,
+            &aggregate_key,
+            &some_masked_card,
+            &some_random,
+        )
+        .unwrap();
 
         let statement =
             ComputationStatement::new(some_masked_card, remasked, (parameters, aggregate_key));
@@ -185,12 +196,13 @@ mod test {
         let rng = &mut thread_rng();
 
         let parameters = CardProtocol::setup(rng).unwrap();
-        let (pk, sk) = CardProtocol::player_keygen(&parameters, rng).unwrap();
+        let (pk, sk) = CardProtocol::player_keygen(rng, &parameters).unwrap();
 
         let some_masked_card = MaskedCard::rand(rng);
 
         let (reveal_token, reveal_proof): (RevealToken, RevealProof) =
-            CardProtocol::compute_reveal_token(&parameters, &sk, &pk, &some_masked_card).unwrap();
+            CardProtocol::compute_reveal_token(rng, &parameters, &sk, &pk, &some_masked_card)
+                .unwrap();
 
         let statement = ComputationStatement::new(some_masked_card, reveal_token, (parameters, pk));
 
@@ -218,14 +230,19 @@ mod test {
         let card = Card::rand(rng);
         let alpha = Scalar::rand(rng);
         let (masked, _) =
-            CardProtocol::mask(&parameters, &expected_shared_key, &card, &alpha).unwrap();
+            CardProtocol::mask(rng, &parameters, &expected_shared_key, &card, &alpha).unwrap();
 
         let decryption_key = players
             .iter()
             .map(|player| {
-                let (token, proof) =
-                    CardProtocol::compute_reveal_token(&parameters, &player.1, &player.0, &masked)
-                        .unwrap();
+                let (token, proof) = CardProtocol::compute_reveal_token(
+                    rng,
+                    &parameters,
+                    &player.1,
+                    &player.0,
+                    &masked,
+                )
+                .unwrap();
                 (token, proof, player.0)
             })
             .collect::<Vec<_>>();

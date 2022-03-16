@@ -8,7 +8,7 @@ use crate::zkp::ArgumentOfKnowledge;
 use ark_ff::Field;
 use ark_std::{marker::PhantomData, rand::Rng};
 
-pub struct HadamardProductArgument<'a, F, Comm>
+pub struct ProductArgument<'a, F, Comm>
 where
     F: Field,
     Comm: HomomorphicCommitmentScheme<F>,
@@ -17,7 +17,7 @@ where
     _commitment_scheme: PhantomData<&'a Comm>,
 }
 
-impl<'a, Scalar, Comm> ArgumentOfKnowledge for HadamardProductArgument<'a, Scalar, Comm>
+impl<'a, Scalar, Comm> ArgumentOfKnowledge for ProductArgument<'a, Scalar, Comm>
 where
     Scalar: Field,
     Comm: HomomorphicCommitmentScheme<Scalar>,
@@ -50,7 +50,7 @@ where
     }
 }
 
-/// Parameters for the Hadamard product argument. Contains a commitment key and the matrix dimensions.
+/// Parameters for the product argument
 pub struct Parameters<'a, Scalar, Comm>
 where
     Scalar: Field,
@@ -71,48 +71,34 @@ where
     }
 }
 
-/// Witness for the Hadamard product argument. Contains a matrix A of size, vector r, vector b and scalar s such that:
-/// b is the Hadamard product of the columns of A, `commitment_to_a` (see `Statement`) is a vector of commitments to the
-/// columns of A using the randoms r and `commitment_to_b` (see `Statement`) is a commitment to the vector b using random s.
-pub struct Witness<'a, Scalar>
-where
-    Scalar: Field,
-{
+/// Witness for the product argument. Contains a matrix A for which we want to claim the product b (see [Statement])
+/// and randoms which will have been used to commit to each column of A.
+pub struct Witness<'a, Scalar: Field> {
     pub matrix_a: &'a Vec<Vec<Scalar>>,
     pub randoms_for_a_commit: &'a Vec<Scalar>,
-    pub vector_b: &'a Vec<Scalar>,
-    pub random_for_b_commit: Scalar,
 }
 
 impl<'a, Scalar> Witness<'a, Scalar>
 where
     Scalar: Field,
 {
-    pub fn new(
-        matrix_a: &'a Vec<Vec<Scalar>>,
-        randoms_for_a_commit: &'a Vec<Scalar>,
-        vector_b: &'a Vec<Scalar>,
-        random_for_b_commit: Scalar,
-    ) -> Self {
+    pub fn new(matrix_a: &'a Vec<Vec<Scalar>>, randoms_for_a_commit: &'a Vec<Scalar>) -> Self {
         Self {
             matrix_a,
             randoms_for_a_commit,
-            vector_b,
-            random_for_b_commit,
         }
     }
 }
 
-/// Statement for the Hadamard product argument. Contains a vector `commitment_to_a` of commitments to the columns
-/// of matrix `A` using the randoms `r` (see `Witness`) and a point `commitment_to_b`, which is a commitment to the
-/// vector b using the random `s` (see `Witness`).
+/// Statement for the product argument. Contains a vector of commitments to the columns of matrix A (see [Witness])
+/// and a scalar b which is claimed to be the product of all the cells in A.
 pub struct Statement<'a, Scalar, Comm>
 where
     Scalar: Field,
     Comm: HomomorphicCommitmentScheme<Scalar>,
 {
-    pub commitment_to_a: &'a Vec<Comm::Commitment>,
-    pub commitment_to_b: Comm::Commitment,
+    pub commitments_to_a: &'a Vec<Comm::Commitment>,
+    pub b: Scalar,
 }
 
 impl<'a, Scalar, Comm> Statement<'a, Scalar, Comm>
@@ -120,13 +106,17 @@ where
     Scalar: Field,
     Comm: HomomorphicCommitmentScheme<Scalar>,
 {
-    pub fn new(
-        commitment_to_a: &'a Vec<Comm::Commitment>,
-        commitment_to_b: Comm::Commitment,
-    ) -> Self {
+    pub fn new(commitments_to_a: &'a Vec<Comm::Commitment>, b: Scalar) -> Self {
         Self {
-            commitment_to_a,
-            commitment_to_b,
+            commitments_to_a,
+            b,
         }
+    }
+
+    pub fn is_valid(&self, parameters: &Parameters<Scalar, Comm>) -> Result<(), CryptoError> {
+        if self.commitments_to_a.len() != parameters.m {
+            return Err(CryptoError::InvalidProductArgumentStatement);
+        }
+        Ok(())
     }
 }

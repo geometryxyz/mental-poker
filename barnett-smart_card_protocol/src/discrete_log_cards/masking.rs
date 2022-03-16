@@ -1,11 +1,28 @@
 use crate::discrete_log_cards::{Card, MaskedCard, Parameters, PublicKey};
-use crate::{ComputationStatement, Provable, Verifiable};
+use crate::error::CardProtocolError;
+use crate::{ComputationStatement, Mask, Provable, Verifiable};
 
 use ark_ec::ProjectiveCurve;
 use ark_ff::One;
+use ark_std::rand::Rng;
 use crypto_primitives::error::CryptoError;
+use crypto_primitives::homomorphic_encryption::{
+    el_gamal, el_gamal::ElGamal, HomomorphicEncryptionScheme,
+};
 use crypto_primitives::zkp::{proofs::chaum_pedersen_dl_equality, ArgumentOfKnowledge};
 use std::ops::Mul;
+
+impl<C: ProjectiveCurve> Mask<C::ScalarField, ElGamal<C>> for Card<C> {
+    fn mask(
+        &self,
+        pp: &el_gamal::Parameters<C>,
+        shared_key: &el_gamal::PublicKey<C>,
+        r: &C::ScalarField,
+    ) -> Result<el_gamal::Ciphertext<C>, CardProtocolError> {
+        let ciphertext = ElGamal::<C>::encrypt(pp, shared_key, self, r)?;
+        Ok(ciphertext)
+    }
+}
 
 pub type Statement<C> = ComputationStatement<Card<C>, MaskedCard<C>, (Parameters<C>, PublicKey<C>)>;
 
@@ -43,12 +60,20 @@ impl<C: ProjectiveCurve> Provable<chaum_pedersen_dl_equality::DLEquality<C>> for
     type Output = Proof<C>;
     type Witness = C::ScalarField;
 
-    fn prove(&self, witness: Self::Witness) -> Result<Self::Output, CryptoError> {
+    fn prove<R: Rng>(
+        &self,
+        rng: &mut R,
+        witness: Self::Witness,
+    ) -> Result<Self::Output, CryptoError> {
         let (cp_parameters, cp_statement) = self.to_chaum_pedersen();
 
         // Use witness to prove the statement
-        let cp_proof =
-            chaum_pedersen_dl_equality::DLEquality::prove(&cp_parameters, &cp_statement, &witness)?;
+        let cp_proof = chaum_pedersen_dl_equality::DLEquality::prove(
+            rng,
+            &cp_parameters,
+            &cp_statement,
+            &witness,
+        )?;
 
         Ok(Proof(cp_proof))
     }

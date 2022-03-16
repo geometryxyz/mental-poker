@@ -4,7 +4,8 @@ use crate::zkp::transcript::TranscriptProtocol;
 
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::PrimeField;
-use ark_std::{rand::thread_rng, UniformRand};
+use ark_std::rand::Rng;
+use ark_std::UniformRand;
 use merlin::Transcript;
 
 use std::marker::PhantomData;
@@ -20,7 +21,8 @@ impl<C> Prover<C>
 where
     C: ProjectiveCurve,
 {
-    pub fn create_proof(
+    pub fn create_proof<R: Rng>(
+        rng: &mut R,
         pp: &Parameters<C>,
         statement: &Statement<C>,
         witness: &Witness<C>,
@@ -29,7 +31,6 @@ where
         transcript.append(b"public_generator", pp);
         transcript.append(b"public_key", statement);
 
-        let rng = &mut thread_rng();
         let random = C::ScalarField::rand(rng);
 
         let random_commit = pp.mul(random.into_repr());

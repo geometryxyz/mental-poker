@@ -36,7 +36,7 @@ pub fn hadamard_product<S: Field>(scalars: &Vec<S>, rhs: &Vec<S>) -> Result<Vec<
         .collect())
 }
 
-/// Reshape a vector of length N into a matrix of m-by-n. Requires that N = m*n
+/// Reshape a vector of length N into a matrix of m-by-n (m chunks of length n). Requires that N = m*n
 pub fn reshape<T: Clone>(
     in_vector: &Vec<T>,
     m: usize,

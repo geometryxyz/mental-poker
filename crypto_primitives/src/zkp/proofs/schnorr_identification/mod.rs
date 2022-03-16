@@ -6,7 +6,7 @@ use crate::error::CryptoError;
 use crate::zkp::ArgumentOfKnowledge;
 use ark_ec::ProjectiveCurve;
 use ark_std::marker::PhantomData;
-// use ark_std::rand::Rng;
+use ark_std::rand::Rng;
 
 pub struct SchnorrIdentification<C: ProjectiveCurve> {
     _group: PhantomData<C>,
@@ -28,12 +28,14 @@ impl<C: ProjectiveCurve> ArgumentOfKnowledge for SchnorrIdentification<C> {
     //     Ok(C::rand(rng).into_affine())
     // }
 
-    fn prove(
+    fn prove<R: Rng>(
+        rng: &mut R,
         common_reference_string: &Self::CommonReferenceString,
         statement: &Self::Statement,
         witness: &Self::Witness,
     ) -> Result<Self::Proof, CryptoError> {
         Ok(prover::Prover::create_proof(
+            rng,
             common_reference_string,
             statement,
             witness,

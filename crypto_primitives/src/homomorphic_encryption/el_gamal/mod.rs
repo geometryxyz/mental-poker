@@ -27,6 +27,8 @@ pub type PublicKey<C> = <C as ProjectiveCurve>::Affine;
 #[derive(Clone, Copy, PartialEq, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Plaintext<C: ProjectiveCurve>(pub C::Affine);
 
+pub type Generator<C> = Plaintext<C>;
+
 pub type SecretKey<C> = <C as ProjectiveCurve>::ScalarField;
 
 #[derive(Clone, Copy, PartialEq, Debug, CanonicalSerialize, CanonicalDeserialize)]
@@ -37,6 +39,7 @@ where
     C: ProjectiveCurve,
 {
     type Parameters = Parameters<C>;
+    type Generator = Generator<C>;
     type PublicKey = PublicKey<C>;
     type SecretKey = SecretKey<C>;
     type Plaintext = Plaintext<C>;

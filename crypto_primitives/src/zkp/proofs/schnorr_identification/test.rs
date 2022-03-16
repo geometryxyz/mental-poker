@@ -27,7 +27,7 @@ mod test {
         let secret = Scalar::rand(&mut rng);
         let pk = crs.mul(secret).into_affine();
 
-        let proof = Schnorr::prove(&crs, &pk, &secret).unwrap();
+        let proof = Schnorr::prove(&mut rng, &crs, &pk, &secret).unwrap();
 
         assert_eq!(Schnorr::verify(&crs, &pk, &proof), Ok(()));
     }
@@ -43,7 +43,7 @@ mod test {
 
         let another_scalar = Scalar::rand(&mut rng);
 
-        let invalid_proof = Schnorr::prove(&crs, &pk, &another_scalar).unwrap();
+        let invalid_proof = Schnorr::prove(&mut rng, &crs, &pk, &another_scalar).unwrap();
 
         assert_eq!(
             Schnorr::verify(&crs, &pk, &invalid_proof),

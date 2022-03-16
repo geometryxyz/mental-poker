@@ -1,27 +1,33 @@
 #[cfg(test)]
 mod test {
 
+    use crate::error::CryptoError;
     use crate::homomorphic_encryption::{el_gamal, HomomorphicEncryptionScheme};
     use crate::utils::{
         rand::sample_vector,
         vector_arithmetic::{dot_product, reshape},
     };
     use crate::vector_commitment::{pedersen, HomomorphicCommitmentScheme};
-    use crate::zkp::arguments::multi_exponentiation;
+    use crate::zkp::{arguments::multi_exponentiation, ArgumentOfKnowledge};
 
     use ark_ff::Zero;
     use ark_std::{rand::thread_rng, UniformRand};
     use starknet_curve;
     use std::iter::Iterator;
 
+    // Choose ellitptic curve setting
     type Curve = starknet_curve::Projective;
     type Scalar = starknet_curve::Fr;
+
+    // Type aliases for concrete instances using the chosen EC.
     type Enc = el_gamal::ElGamal<Curve>;
     type Comm = pedersen::PedersenCommitment<Curve>;
     type Plaintext = el_gamal::Plaintext<Curve>;
+    type Generator = el_gamal::Generator<Curve>;
     type Ciphertext = el_gamal::Ciphertext<Curve>;
     type Witness<'a> = multi_exponentiation::Witness<'a, Scalar>;
     type Statement<'a> = multi_exponentiation::Statement<'a, Scalar, Enc, Comm>;
+    type MultiExpArg<'a> = multi_exponentiation::MultiExponentiation<'a, Scalar, Enc, Comm>;
 
     #[test]
     fn test_multi_exp() {
@@ -35,14 +41,18 @@ mod test {
 
         let commit_key = Comm::setup(rng, n);
 
-        let generator = Plaintext::rand(rng);
+        let generator = Generator::rand(rng);
 
         let ciphers: Vec<Ciphertext> = sample_vector(rng, number_of_ciphers);
         let exponents: Vec<Scalar> = sample_vector(rng, number_of_ciphers);
 
         // construct parameters
-        let parameters =
-            multi_exponentiation::Parameters::new(&encrypt_parameters, &pk, &commit_key, generator);
+        let parameters = multi_exponentiation::Parameters::new(
+            &encrypt_parameters,
+            &pk,
+            &commit_key,
+            &generator,
+        );
 
         // Construct witness
         let a_chunks = reshape(&exponents, m, n).unwrap();
@@ -69,9 +79,23 @@ mod test {
 
         let statement = Statement::new(&c_chunks, grand_product, &c_a);
 
-        let prover = multi_exponentiation::prover::Prover::new(&parameters, &statement, &witness);
-        let proof = prover.prove().unwrap();
+        // let prover = multi_exponentiation::prover::Prover::new(&parameters, &statement, &witness);
+        // let proof = prover.prove().unwrap();
 
-        assert_eq!((), proof.verify(&parameters, &statement).unwrap())
+        let proof = MultiExpArg::prove(rng, &parameters, &statement, &witness).unwrap();
+
+        assert_eq!((), proof.verify(&parameters, &statement).unwrap());
+
+        let wrong_rho = Scalar::rand(rng);
+        let wrong_witness = Witness::new(&a_chunks, &r, wrong_rho);
+        let invalid_proof =
+            MultiExpArg::prove(rng, &parameters, &statement, &wrong_witness).unwrap();
+
+        assert_eq!(
+            invalid_proof.verify(&parameters, &statement),
+            Err(CryptoError::ProofVerificationError(String::from(
+                "Multi Exponentiation",
+            )))
+        );
     }
 }

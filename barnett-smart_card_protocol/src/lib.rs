@@ -58,7 +58,11 @@ pub trait Provable<A: ArgumentOfKnowledge> {
     type Output;
     type Witness;
 
-    fn prove(&self, witness: Self::Witness) -> Result<Self::Output, CryptoError>;
+    fn prove<R: Rng>(
+        &self,
+        rng: &mut R,
+        witness: Self::Witness,
+    ) -> Result<Self::Output, CryptoError>;
 }
 
 /// Defines a proof of a statement provable in a given proof or argument system
@@ -109,12 +113,13 @@ pub trait BarnettSmartProtocol {
 
     /// Generate keys for a player.
     fn player_keygen<R: Rng>(
-        pp: &Self::Parameters,
         rng: &mut R,
+        pp: &Self::Parameters,
     ) -> Result<(Self::PlayerPublicKey, Self::PlayerSecretKey), CardProtocolError>;
 
     /// Prove in zero knowledge that the owner of a public key `pk` knows the corresponding secret key `sk`
-    fn prove_key_ownership(
+    fn prove_key_ownership<R: Rng>(
+        rng: &mut R,
         pp: &Self::Parameters,
         pk: &Self::PlayerPublicKey,
         sk: &Self::PlayerSecretKey,
@@ -128,7 +133,8 @@ pub trait BarnettSmartProtocol {
 
     /// Use the shared public key and a (private) random scalar `alpha` to mask a card.
     /// Returns a masked card and a zk-proof that the masking operation was applied correctly.
-    fn mask(
+    fn mask<R: Rng>(
+        rng: &mut R,
         pp: &Self::Parameters,
         shared_key: &Self::AggregatePublicKey,
         message: &Self::Card,
@@ -137,7 +143,8 @@ pub trait BarnettSmartProtocol {
 
     /// Use the shared public key and a (private) random scalar `alpha` to remask a masked card.
     /// Returns a masked card and a zk-proof that the remasking operation was applied correctly.
-    fn remask(
+    fn remask<R: Rng>(
+        rng: &mut R,
         pp: &Self::Parameters,
         shared_key: &Self::AggregatePublicKey,
         ciphertext: &Self::MaskedCard,
@@ -147,7 +154,8 @@ pub trait BarnettSmartProtocol {
     /// Players can use this function to compute their reveal token for a given masked card.
     /// The token is accompanied by a proof that it is a valid reveal for the specified card issued
     /// by the player who ran the computation.
-    fn compute_reveal_token(
+    fn compute_reveal_token<R: Rng>(
+        rng: &mut R,
         pp: &Self::Parameters,
         sk: &Self::PlayerSecretKey,
         pk: &Self::PlayerPublicKey,
@@ -163,6 +171,7 @@ pub trait BarnettSmartProtocol {
     ) -> Result<Self::Card, CardProtocolError>;
 
     // fn shuffle_and_remask(
+    //     rng: &mut R,
     //     pp: &Self::Parameters,
     //     shared_key: &Self::AggregatePublicKey,
     //     deck: &Vec<Self::MaskedCard>,

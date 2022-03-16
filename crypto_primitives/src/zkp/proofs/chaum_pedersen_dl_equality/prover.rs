@@ -4,7 +4,7 @@ use crate::zkp::transcript::TranscriptProtocol;
 
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::PrimeField;
-use ark_std::{rand::thread_rng, UniformRand};
+use ark_std::{rand::Rng, UniformRand};
 use merlin::Transcript;
 
 use std::marker::PhantomData;
@@ -20,7 +20,8 @@ impl<C> Prover<C>
 where
     C: ProjectiveCurve,
 {
-    pub fn create_proof(
+    pub fn create_proof<R: Rng>(
+        rng: &mut R,
         parameters: &Parameters<C>,
         statement: &Statement<C>,
         witness: &Witness<C>,
@@ -30,8 +31,6 @@ where
         transcript.append(b"h", &parameters.h);
         transcript.append(b"x", &statement.0);
         transcript.append(b"y", &statement.1);
-
-        let rng = &mut thread_rng();
 
         let omega = C::ScalarField::rand(rng);
         let a = parameters.g.mul(omega.into_repr());
