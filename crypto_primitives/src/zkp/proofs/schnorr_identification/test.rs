@@ -10,7 +10,7 @@ mod test {
     use starknet_curve;
 
     type Curve = starknet_curve::Projective;
-    type Schnorr<'a> = schnorr_identification::SchnorrIdentification<'a, Curve>;
+    type Schnorr<'a> = schnorr_identification::SchnorrIdentification<Curve>;
     type Scalar = starknet_curve::Fr;
     type Parameters = schnorr_identification::Parameters<Curve>;
 

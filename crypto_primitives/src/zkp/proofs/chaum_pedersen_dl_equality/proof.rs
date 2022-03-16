@@ -25,8 +25,8 @@ impl<C: ProjectiveCurve> Proof<C> {
 
         transcript.append(b"g", &parameters.g);
         transcript.append(b"h", &parameters.h);
-        transcript.append(b"x", statement.0);
-        transcript.append(b"y", statement.1);
+        transcript.append(b"x", &statement.0);
+        transcript.append(b"y", &statement.1);
 
         transcript.append(b"a", &self.a);
         transcript.append(b"b", &self.b);

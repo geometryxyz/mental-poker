@@ -1,11 +1,11 @@
 use super::BarnettSmartProtocol;
-use super::{Mask, Remask, Reveal};
+use super::{Mask, Provable, Remask, Reveal, Verifiable};
 
 use crate::error::CardProtocolError;
 
 use anyhow::Result;
 use ark_ec::ProjectiveCurve;
-use ark_ff::One;
+use ark_ff::{One, PrimeField};
 use ark_std::rand::Rng;
 use ark_std::Zero;
 use crypto_primitives::homomorphic_encryption::{
@@ -14,20 +14,21 @@ use crypto_primitives::homomorphic_encryption::{
 // use crypto_primitives::utils::permutation::Permutation;
 use crypto_primitives::error::CryptoError;
 use crypto_primitives::vector_commitment::pedersen::PedersenCommitment;
-use crypto_primitives::zkp::proofs::chaum_pedersen_dl_equality;
-use crypto_primitives::zkp::proofs::schnorr_identification;
-use crypto_primitives::zkp::ArgumentOfKnowledge;
+use crypto_primitives::zkp::{
+    proofs::chaum_pedersen_dl_equality, proofs::schnorr_identification, ArgumentOfKnowledge,
+};
 use std::{marker::PhantomData, ops::Mul};
 
-mod key_ownership;
-mod masking_arg;
-mod remasking_arg;
+mod masking;
+mod remasking;
+mod reveal;
 mod tests;
 
 pub struct DLCards<'a, C: ProjectiveCurve> {
     _group: &'a PhantomData<C>,
 }
 
+#[derive(Copy, Clone)]
 pub struct Parameters<C: ProjectiveCurve> {
     enc_parameters: el_gamal::Parameters<C>,
     // commit_parameters: pedersen::CommitKey<C>,
@@ -39,6 +40,8 @@ type PublicKey<C> = el_gamal::PublicKey<C>;
 
 type PlayerSecretKey<C> = el_gamal::SecretKey<C>;
 
+/// An open playing card. In this Discrete Log-based implementation of the Barnett-Smart card protocol
+/// a card is an el-Gamal plaintext. We create a type alias to implement the `Mask` trait on it.
 type Card<C> = el_gamal::Plaintext<C>;
 
 impl<C: ProjectiveCurve> Mask<C::ScalarField, ElGamal<C>> for Card<C> {
@@ -53,6 +56,9 @@ impl<C: ProjectiveCurve> Mask<C::ScalarField, ElGamal<C>> for Card<C> {
     }
 }
 
+/// A masked (flipped) playing card. Note that a player masking a card will know the mapping from
+/// open to masked card. All other players must remask to guarantee that the card is privately masked.
+/// We create a type alias to implement the `Mask` trait on it.
 type MaskedCard<C> = el_gamal::Ciphertext<C>;
 
 impl<C: ProjectiveCurve> Remask<C::ScalarField, ElGamal<C>> for MaskedCard<C> {
@@ -70,6 +76,8 @@ impl<C: ProjectiveCurve> Remask<C::ScalarField, ElGamal<C>> for MaskedCard<C> {
     }
 }
 
+/// A `RevealToken` is computed by players when they wish to reveal a given card. These tokens can
+/// then be aggregated to reveal the card.
 type RevealToken<C> = el_gamal::Plaintext<C>;
 
 impl<C: ProjectiveCurve> Reveal<C::ScalarField, ElGamal<C>> for RevealToken<C> {
@@ -85,36 +93,28 @@ impl<C: ProjectiveCurve> Reveal<C::ScalarField, ElGamal<C>> for RevealToken<C> {
     }
 }
 
-type ProofKeyOwnership<C> = schnorr_identification::proof::Proof<C>;
-
-type ProofMasking<C> = chaum_pedersen_dl_equality::proof::Proof<C>;
-
-type ProofRemasking<C> = chaum_pedersen_dl_equality::proof::Proof<C>;
-
-// type ProofReveal<C> = chaum_pedersen_dl_equality::proof::Proof<C>;
-
 impl<'a, C: ProjectiveCurve> BarnettSmartProtocol for DLCards<'a, C> {
     type Scalar = C::ScalarField;
+    type Enc = ElGamal<C>;
+    type Comm = PedersenCommitment<C>;
     type Parameters = Parameters<C>;
     type PlayerPublicKey = PublicKey<C>;
     type PlayerSecretKey = PlayerSecretKey<C>;
     type AggregatePublicKey = PublicKey<C>;
-    type Enc = ElGamal<C>;
-    type Comm = PedersenCommitment<C>;
 
     type Card = Card<C>;
     type MaskedCard = MaskedCard<C>;
     type RevealToken = RevealToken<C>;
 
-    type KeyOwnArg = key_ownership::KeyOwnershipArg<C>;
-    type MaskingArg = masking_arg::MaskingArgument<C>;
-    type RemaskingArg = remasking_arg::RemaskingArgument<C>;
-    // type RevealArg = DLEquality<'a, C>;
+    type KeyOwnArg = schnorr_identification::SchnorrIdentification<C>;
+    type MaskingArg = chaum_pedersen_dl_equality::DLEquality<C>;
+    type RemaskingArg = chaum_pedersen_dl_equality::DLEquality<C>;
+    type RevealArg = chaum_pedersen_dl_equality::DLEquality<C>;
 
-    type ProofKeyOwnership = ProofKeyOwnership<C>;
-    type ProofMasking = ProofMasking<C>;
-    type ProofRemasking = ProofRemasking<C>;
-    // type ProofReveal = ProofReveal<C>;
+    type ProofKeyOwnership = schnorr_identification::proof::Proof<C>;
+    type ProofMasking = masking::Proof<C>;
+    type ProofRemasking = remasking::Proof<C>;
+    type ProofReveal = reveal::Proof<C>;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, CardProtocolError> {
         let enc_parameters = Self::Enc::setup(rng)?;
@@ -169,10 +169,9 @@ impl<'a, C: ProjectiveCurve> BarnettSmartProtocol for DLCards<'a, C> {
         r: &Self::Scalar,
     ) -> Result<(Self::MaskedCard, Self::ProofMasking), CardProtocolError> {
         let masked = message.mask(&pp.enc_parameters, shared_key, r)?;
+        let statement = masking::Statement::new(*message, masked, (*pp, *shared_key));
 
-        let crs = masking_arg::CommonReferenceString::new(pp.enc_parameters.generator, *shared_key);
-
-        let proof = Self::MaskingArg::prove(&crs, &masking_arg::Statement(*message, masked), &r)?;
+        let proof = statement.prove(*r)?;
 
         Ok((masked, proof))
     }
@@ -182,11 +181,46 @@ impl<'a, C: ProjectiveCurve> BarnettSmartProtocol for DLCards<'a, C> {
         shared_key: &Self::AggregatePublicKey,
         original: &Self::MaskedCard,
         alpha: &Self::Scalar,
-    ) -> Result<(Self::MaskedCard, Self::ProofMasking), CardProtocolError> {
+    ) -> Result<(Self::MaskedCard, Self::ProofRemasking), CardProtocolError> {
         let remasked = original.remask(&pp.enc_parameters, shared_key, alpha)?;
-        let crs = remasking_arg::CommonReferenceString::new(pp.enc_parameters.generator, *shared_key);
-        let proof = Self::RemaskingArg::prove(&crs, &remasking_arg::Statement::new(*original, remasked), alpha)?;
+        let statement = remasking::Statement::new(*original, remasked, (*pp, *shared_key));
+        let proof = statement.prove(*alpha)?;
 
         Ok((remasked, proof))
+    }
+
+    fn compute_reveal_token(
+        pp: &Self::Parameters,
+        sk: &Self::PlayerSecretKey,
+        pk: &Self::PlayerPublicKey,
+        ciphertext: &Self::MaskedCard,
+    ) -> Result<(Self::RevealToken, Self::ProofReveal), CardProtocolError> {
+        let reveal_token: RevealToken<C> =
+            el_gamal::Plaintext(ciphertext.0.into().mul(sk.into_repr()).into_affine());
+        let statement = reveal::Statement::new(*ciphertext, reveal_token, (*pp, *pk));
+        let proof = statement.prove(*sk)?;
+
+        Ok((reveal_token, proof))
+    }
+
+    fn unmask(
+        pp: &Self::Parameters,
+        decryption_key: &Vec<(Self::RevealToken, Self::ProofReveal, Self::PlayerPublicKey)>,
+        cipher: &Self::MaskedCard,
+    ) -> Result<Self::Card, CardProtocolError> {
+        let zero = Self::RevealToken::zero();
+        let minus_one = -Self::Scalar::one();
+
+        let mut acc = zero;
+
+        for (token, proof, pk) in decryption_key {
+            let statement = reveal::Statement::new(*cipher, *token, (*pp, *pk));
+            proof.verify(&statement)?;
+            acc = acc + *token;
+        }
+
+        let decrypted = (*cipher).1 + acc.mul(minus_one).0;
+
+        Ok(el_gamal::Plaintext(decrypted))
     }
 }

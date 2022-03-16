@@ -8,8 +8,8 @@ use ark_ec::ProjectiveCurve;
 use ark_std::marker::PhantomData;
 // use ark_std::rand::Rng;
 
-pub struct DLEquality<'a, C: ProjectiveCurve> {
-    _group: PhantomData<&'a C>,
+pub struct DLEquality<C: ProjectiveCurve> {
+    _group: PhantomData<C>,
 }
 
 pub struct Parameters<C: ProjectiveCurve> {
@@ -23,22 +23,25 @@ impl<C: ProjectiveCurve> Parameters<C> {
     }
 }
 
-pub struct Statement<'a, C: ProjectiveCurve>(pub &'a C::Affine, pub &'a C::Affine);
+/// Statement for a Chaum-Pedersen proof of discrete logarithm equality.
+/// Expects two points $A$ and $B$ such that for some secret $x$ and parameters
+/// $G$ and $H$, $A = xG$ and $B=xH$
+pub struct Statement<C: ProjectiveCurve>(pub C::Affine, pub C::Affine);
 
-impl<'a, C: ProjectiveCurve> Statement<'a, C> {
-    pub fn new(point_a: &'a C::Affine, point_b: &'a C::Affine) -> Self {
+impl<'a, C: ProjectiveCurve> Statement<C> {
+    pub fn new(point_a: C::Affine, point_b: C::Affine) -> Self {
         Self(point_a, point_b)
     }
 }
 
 type Witness<C> = <C as ProjectiveCurve>::ScalarField;
 
-impl<'a, C> ArgumentOfKnowledge for DLEquality<'a, C>
+impl<C> ArgumentOfKnowledge for DLEquality<C>
 where
     C: ProjectiveCurve,
 {
     type CommonReferenceString = Parameters<C>;
-    type Statement = Statement<'a, C>;
+    type Statement = Statement<C>;
     type Witness = Witness<C>;
     type Proof = proof::Proof<C>;
 

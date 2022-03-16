@@ -1,5 +1,4 @@
 use super::{Parameters, Statement};
-
 use crate::error::CryptoError;
 use crate::zkp::transcript::TranscriptProtocol;
 

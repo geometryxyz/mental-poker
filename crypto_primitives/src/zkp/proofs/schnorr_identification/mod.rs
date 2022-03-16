@@ -8,8 +8,8 @@ use ark_ec::ProjectiveCurve;
 use ark_std::marker::PhantomData;
 // use ark_std::rand::Rng;
 
-pub struct SchnorrIdentification<'a, C: ProjectiveCurve> {
-    _group: PhantomData<&'a C>,
+pub struct SchnorrIdentification<C: ProjectiveCurve> {
+    _group: PhantomData<C>,
 }
 
 pub type Parameters<C> = <C as ProjectiveCurve>::Affine;
@@ -18,7 +18,7 @@ pub type Statement<C> = <C as ProjectiveCurve>::Affine;
 
 pub type Witness<C> = <C as ProjectiveCurve>::ScalarField;
 
-impl<'a, C: ProjectiveCurve> ArgumentOfKnowledge for SchnorrIdentification<'a, C> {
+impl<C: ProjectiveCurve> ArgumentOfKnowledge for SchnorrIdentification<C> {
     type CommonReferenceString = Parameters<C>;
     type Statement = Statement<C>;
     type Witness = Witness<C>;

@@ -17,7 +17,7 @@ pub struct ElGamal<C: ProjectiveCurve> {
     _group: PhantomData<C>,
 }
 
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Copy, Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Parameters<C: ProjectiveCurve> {
     pub generator: C::Affine,
 }

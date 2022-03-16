@@ -32,7 +32,7 @@ mod test {
         let point_b = crs.h.mul(secret).into_affine();
 
         let statement = chaum_pedersen_dl_equality::Statement::<starknet_curve::Projective>::new(
-            &point_a, &point_b,
+            point_a, point_b,
         );
 
         let proof =
@@ -42,6 +42,8 @@ mod test {
             DLEquality::<starknet_curve::Projective>::verify(&crs, &statement, &proof),
             Ok(())
         );
+
+        assert_ne! {point_a, point_b};
     }
 
     #[test]
@@ -57,7 +59,7 @@ mod test {
         let another_scalar = starknet_curve::Fr::rand(&mut rng);
 
         let statement = chaum_pedersen_dl_equality::Statement::<starknet_curve::Projective>::new(
-            &point_a, &point_b,
+            point_a, point_b,
         );
 
         let invalid_proof =
@@ -89,7 +91,7 @@ mod test {
         let point_b = crs.h.mul(secret_masking_factor).into_affine();
 
         let statement = chaum_pedersen_dl_equality::Statement::<starknet_curve::Projective>::new(
-            &point_a, &point_b,
+            point_a, point_b,
         );
 
         let proof = DLEquality::<starknet_curve::Projective>::prove(
