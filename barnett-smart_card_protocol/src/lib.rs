@@ -1,4 +1,5 @@
 use crate::error::CardProtocolError;
+
 use ark_ff::Field;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::Rng;
@@ -40,18 +41,24 @@ pub trait BarnettSmartProtocol {
     // Cryptography
     type Scalar: Field;
     type Parameters;
-    type PlayerPublicKey;
+    type PlayerPublicKey: CanonicalDeserialize + CanonicalSerialize;
     type PlayerSecretKey;
-    type AggregatePublicKey;
+    type AggregatePublicKey: CanonicalDeserialize + CanonicalSerialize;
     type Enc: HomomorphicEncryptionScheme<Self::Scalar>;
     type Comm: HomomorphicCommitmentScheme<Self::Scalar>;
 
     // Cards
-    type Card: Copy + Clone + Mask<Self::Scalar, Self::Enc>;
-    type MaskedCard: Remask<Self::Scalar, Self::Enc>;
+    type Card: Copy
+        + Clone
+        + Mask<Self::Scalar, Self::Enc>
+        + CanonicalDeserialize
+        + CanonicalSerialize;
+    type MaskedCard: Remask<Self::Scalar, Self::Enc> + CanonicalDeserialize + CanonicalSerialize;
     type RevealToken: Add
         + Reveal<Self::Scalar, Self::Enc>
-        + Mul<Self::Scalar, Output = Self::RevealToken>;
+        + Mul<Self::Scalar, Output = Self::RevealToken>
+        + CanonicalDeserialize
+        + CanonicalSerialize;
 
     // Proofs
     type ZKProofKeyOwnership: CanonicalDeserialize + CanonicalSerialize;
