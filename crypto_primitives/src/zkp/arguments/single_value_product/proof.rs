@@ -5,8 +5,11 @@ use crate::vector_commitment::HomomorphicCommitmentScheme;
 use crate::zkp::transcript::TranscriptProtocol;
 
 use ark_ff::Field;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, SerializationError};
+use ark_std::io::{Read, Write};
 use merlin::Transcript;
 
+#[derive(CanonicalDeserialize, CanonicalSerialize)]
 pub struct Proof<Scalar, Comm>
 where
     Scalar: Field,

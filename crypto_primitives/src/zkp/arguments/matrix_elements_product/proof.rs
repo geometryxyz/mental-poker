@@ -3,8 +3,12 @@ use super::{Parameters, Statement};
 use crate::error::CryptoError;
 use crate::vector_commitment::HomomorphicCommitmentScheme;
 use crate::zkp::arguments::{hadamard_product, single_value_product};
-use ark_ff::Field;
 
+use ark_ff::Field;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, SerializationError};
+use ark_std::io::{Read, Write};
+
+#[derive(CanonicalDeserialize, CanonicalSerialize)]
 pub struct Proof<Scalar, Comm>
 where
     Scalar: Field,

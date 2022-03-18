@@ -311,7 +311,11 @@ impl<'a, C: ProjectiveCurve> BarnettSmartProtocol for DLCards<'a, C> {
 
     fn unmask(
         pp: &Self::Parameters,
-        decryption_key: &Vec<(Self::RevealToken, Self::ZKProofReveal, Self::PlayerPublicKey)>,
+        decryption_key: &Vec<(
+            Self::RevealToken,
+            Self::ZKProofReveal,
+            Self::PlayerPublicKey,
+        )>,
         masked_card: &Self::MaskedCard,
     ) -> Result<Self::Card, CardProtocolError> {
         let zero = Self::RevealToken::zero();

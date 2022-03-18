@@ -1,5 +1,6 @@
 use crate::error::CardProtocolError;
 use ark_ff::Field;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::Rng;
 use crypto_primitives::error::CryptoError;
 use crypto_primitives::homomorphic_encryption::HomomorphicEncryptionScheme;
@@ -53,11 +54,11 @@ pub trait BarnettSmartProtocol {
         + Mul<Self::Scalar, Output = Self::RevealToken>;
 
     // Proofs
-    type ZKProofKeyOwnership;
-    type ZKProofMasking;
-    type ZKProofRemasking;
-    type ZKProofReveal;
-    type ZKProofShuffle;
+    type ZKProofKeyOwnership: CanonicalDeserialize + CanonicalSerialize;
+    type ZKProofMasking: CanonicalDeserialize + CanonicalSerialize;
+    type ZKProofRemasking: CanonicalDeserialize + CanonicalSerialize;
+    type ZKProofReveal: CanonicalDeserialize + CanonicalSerialize;
+    type ZKProofShuffle: CanonicalDeserialize + CanonicalSerialize;
 
     /// Randomly produce the scheme parameters
     fn setup<R: Rng>(
@@ -155,7 +156,11 @@ pub trait BarnettSmartProtocol {
     /// players can unmask a masked card to recover the underlying card.
     fn unmask(
         pp: &Self::Parameters,
-        decryption_key: &Vec<(Self::RevealToken, Self::ZKProofReveal, Self::PlayerPublicKey)>,
+        decryption_key: &Vec<(
+            Self::RevealToken,
+            Self::ZKProofReveal,
+            Self::PlayerPublicKey,
+        )>,
         masked_card: &Self::MaskedCard,
     ) -> Result<Self::Card, CardProtocolError>;
 

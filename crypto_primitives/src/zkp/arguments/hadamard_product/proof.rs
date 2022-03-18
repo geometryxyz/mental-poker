@@ -6,8 +6,11 @@ use crate::zkp::arguments::{zero_value_bilinear_map, zero_value_bilinear_map::YM
 use crate::zkp::{arguments::scalar_powers, transcript::TranscriptProtocol, ArgumentOfKnowledge};
 
 use ark_ff::{Field, Zero};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, SerializationError};
+use ark_std::io::{Read, Write};
 use merlin::Transcript;
 
+#[derive(CanonicalDeserialize, CanonicalSerialize)]
 pub struct Proof<Scalar, Comm>
 where
     Scalar: Field,

@@ -4,8 +4,11 @@ use crate::zkp::transcript::TranscriptProtocol;
 use super::{Parameters, Statement};
 
 use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, SerializationError};
+use ark_std::io::{Read, Write};
 use merlin::Transcript;
 
+#[derive(CanonicalDeserialize, CanonicalSerialize)]
 pub struct Proof<C>
 where
     C: ProjectiveCurve,
