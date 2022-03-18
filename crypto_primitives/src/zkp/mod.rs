@@ -11,8 +11,6 @@ pub trait ArgumentOfKnowledge {
     type Witness;
     type Proof;
 
-    // fn setup<R: Rng>(rng: &mut R) -> Result<Self::CommonReferenceString, CryptoError>;
-
     fn prove<R: Rng>(
         rng: &mut R,
         common_reference_string: &Self::CommonReferenceString,

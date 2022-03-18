@@ -17,7 +17,7 @@ mod test {
     // Type aliases for concrete instances using the chosen EC.
     type Comm = pedersen::PedersenCommitment<Curve>;
     type Witness<'a> = single_value_product::Witness<'a, Scalar>;
-    type Statement = single_value_product::Statement<Scalar, Comm>;
+    type Statement<'a> = single_value_product::Statement<'a, Scalar, Comm>;
     type SingleValueProd<'a> = single_value_product::SingleValueProductArgument<'a, Scalar, Comm>;
     type Parameters<'a> = single_value_product::Parameters<'a, Scalar, Comm>;
 
@@ -35,7 +35,7 @@ mod test {
 
         let parameters = Parameters::new(n, &commit_key);
         let witness = Witness::new(&a, &r);
-        let statement = Statement::new(a_commit, b);
+        let statement = Statement::new(&a_commit, b);
 
         let valid_proof = SingleValueProd::prove(rng, &parameters, &statement, &witness).unwrap();
 

@@ -52,6 +52,10 @@ where
         Ok(Parameters { generator })
     }
 
+    fn generator<R: Rng>(rng: &mut R) -> Result<Self::Generator, CryptoError> {
+        Ok(Generator::rand(rng))
+    }
+
     fn keygen<R: Rng>(
         pp: &Self::Parameters,
         rng: &mut R,

@@ -1,24 +1,28 @@
 use super::BarnettSmartProtocol;
-use super::{Mask, Provable, Remask, Reveal, Verifiable};
+use super::{Mask, Remask, Reveal};
 
 use crate::error::CardProtocolError;
 
 use anyhow::Result;
-use ark_ec::ProjectiveCurve;
-use ark_ff::PrimeField;
+use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ff::{One, PrimeField};
 use ark_std::rand::Rng;
 use ark_std::Zero;
+use crypto_primitives::error::CryptoError;
 use crypto_primitives::homomorphic_encryption::{
     el_gamal, el_gamal::ElGamal, HomomorphicEncryptionScheme,
 };
-// use crypto_primitives::utils::permutation::Permutation;
-use crypto_primitives::error::CryptoError;
+use crypto_primitives::utils::permutation::Permutation;
 use crypto_primitives::vector_commitment::pedersen::PedersenCommitment;
+use crypto_primitives::vector_commitment::{pedersen, HomomorphicCommitmentScheme};
 use crypto_primitives::zkp::{
-    proofs::chaum_pedersen_dl_equality, proofs::schnorr_identification, ArgumentOfKnowledge,
+    arguments::shuffle,
+    proofs::{chaum_pedersen_dl_equality, schnorr_identification},
+    ArgumentOfKnowledge,
 };
 use std::marker::PhantomData;
 
+// mod key_ownership;
 mod masking;
 mod remasking;
 mod reveal;
@@ -28,12 +32,30 @@ pub struct DLCards<'a, C: ProjectiveCurve> {
     _group: &'a PhantomData<C>,
 }
 
-#[derive(Copy, Clone)]
 pub struct Parameters<C: ProjectiveCurve> {
+    m: usize,
+    n: usize,
     enc_parameters: el_gamal::Parameters<C>,
-    // commit_parameters: pedersen::CommitKey<C>,
-    // key_own_parameter: C::Affine,
-    // chaum_pedersen_parameters: chaum_pedersen_dl_equality::Parameters<C>
+    commit_parameters: pedersen::CommitKey<C>,
+    generator: el_gamal::Generator<C>,
+}
+
+impl<C: ProjectiveCurve> Parameters<C> {
+    pub fn new(
+        m: usize,
+        n: usize,
+        enc_parameters: el_gamal::Parameters<C>,
+        commit_parameters: pedersen::CommitKey<C>,
+        generator: el_gamal::Generator<C>,
+    ) -> Self {
+        Self {
+            m,
+            n,
+            enc_parameters,
+            commit_parameters,
+            generator,
+        }
+    }
 }
 
 type PublicKey<C> = el_gamal::PublicKey<C>;
@@ -53,6 +75,9 @@ type MaskedCard<C> = el_gamal::Ciphertext<C>;
 /// then be aggregated to reveal the card.
 type RevealToken<C> = el_gamal::Plaintext<C>;
 
+// type ShuffleArg<'a, C: ProjectiveCurve> =
+//     shuffle::ShuffleArgument<'a, C::ScalarField, ElGamal<C>, PedersenCommitment<C>>;
+
 impl<'a, C: ProjectiveCurve> BarnettSmartProtocol for DLCards<'a, C> {
     type Scalar = C::ScalarField;
     type Enc = ElGamal<C>;
@@ -66,26 +91,28 @@ impl<'a, C: ProjectiveCurve> BarnettSmartProtocol for DLCards<'a, C> {
     type MaskedCard = MaskedCard<C>;
     type RevealToken = RevealToken<C>;
 
-    type KeyOwnArg = schnorr_identification::SchnorrIdentification<C>;
-    type MaskingArg = chaum_pedersen_dl_equality::DLEquality<C>;
-    type RemaskingArg = chaum_pedersen_dl_equality::DLEquality<C>;
-    type RevealArg = chaum_pedersen_dl_equality::DLEquality<C>;
+    type ZKProofKeyOwnership = schnorr_identification::proof::Proof<C>;
+    type ZKProofMasking = chaum_pedersen_dl_equality::proof::Proof<C>;
+    type ZKProofRemasking = chaum_pedersen_dl_equality::proof::Proof<C>;
+    type ZKProofReveal = chaum_pedersen_dl_equality::proof::Proof<C>;
+    type ZKProofShuffle = shuffle::proof::Proof<Self::Scalar, Self::Enc, Self::Comm>;
 
-    type ProofKeyOwnership = schnorr_identification::proof::Proof<C>;
-    type ProofMasking = masking::Proof<C>;
-    type ProofRemasking = remasking::Proof<C>;
-    type ProofReveal = reveal::Proof<C>;
-
-    fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, CardProtocolError> {
+    fn setup<R: Rng>(
+        rng: &mut R,
+        m: usize,
+        n: usize,
+    ) -> Result<Self::Parameters, CardProtocolError> {
         let enc_parameters = Self::Enc::setup(rng)?;
-        // commit_parameters: pedersen::CommitKey<C>,
-        // let key_own_parameter = enc_parameters.generator;
-        // chaum_pedersen_parameters: chaum_pedersen_dl_equality::Parameters<C>
+        let commit_parameters = Self::Comm::setup(rng, n);
+        let generator = Self::Enc::generator(rng)?;
 
-        Ok(Self::Parameters {
+        Ok(Self::Parameters::new(
+            m,
+            n,
             enc_parameters,
-            // key_own_parameter,
-        })
+            commit_parameters,
+            generator,
+        ))
     }
 
     fn player_keygen<R: Rng>(
@@ -102,13 +129,30 @@ impl<'a, C: ProjectiveCurve> BarnettSmartProtocol for DLCards<'a, C> {
         pp: &Self::Parameters,
         pk: &Self::PlayerPublicKey,
         sk: &Self::PlayerSecretKey,
-    ) -> Result<Self::ProofKeyOwnership, CryptoError> {
-        Self::KeyOwnArg::prove(rng, &pp.enc_parameters.generator, pk, sk)
+    ) -> Result<Self::ZKProofKeyOwnership, CryptoError> {
+        schnorr_identification::SchnorrIdentification::prove(
+            rng,
+            &pp.enc_parameters.generator,
+            pk,
+            sk,
+        )
+    }
+
+    fn verify_key_ownership(
+        pp: &Self::Parameters,
+        pk: &Self::PlayerPublicKey,
+        proof: &Self::ZKProofKeyOwnership,
+    ) -> Result<(), CryptoError> {
+        schnorr_identification::SchnorrIdentification::verify(
+            &pp.enc_parameters.generator,
+            pk,
+            proof,
+        )
     }
 
     fn compute_aggregate_key(
         pp: &Self::Parameters,
-        player_keys: &Vec<(Self::PlayerPublicKey, Self::ProofKeyOwnership)>,
+        player_keys: &Vec<(Self::PlayerPublicKey, Self::ZKProofKeyOwnership)>,
     ) -> Result<Self::AggregatePublicKey, CardProtocolError> {
         let zero = Self::PlayerPublicKey::zero();
         let crs = &pp.enc_parameters.generator;
@@ -116,7 +160,7 @@ impl<'a, C: ProjectiveCurve> BarnettSmartProtocol for DLCards<'a, C> {
         let mut acc = zero;
 
         for (pk, proof) in player_keys {
-            proof.verify(&crs, pk)?;
+            schnorr_identification::SchnorrIdentification::verify(crs, pk, proof)?;
             acc = acc + *pk;
         }
 
@@ -127,29 +171,98 @@ impl<'a, C: ProjectiveCurve> BarnettSmartProtocol for DLCards<'a, C> {
         rng: &mut R,
         pp: &Self::Parameters,
         shared_key: &Self::AggregatePublicKey,
-        message: &Self::Card,
+        original_card: &Self::Card,
         r: &Self::Scalar,
-    ) -> Result<(Self::MaskedCard, Self::ProofMasking), CardProtocolError> {
-        let masked = message.mask(&pp.enc_parameters, shared_key, r)?;
-        let statement = masking::Statement::new(*message, masked, (*pp, *shared_key));
+    ) -> Result<(Self::MaskedCard, Self::ZKProofMasking), CardProtocolError> {
+        let masked_card = original_card.mask(&pp.enc_parameters, shared_key, r)?;
+        let gen = pp.enc_parameters.generator;
 
-        let proof = statement.prove(rng, *r)?;
+        // Map to Chaum-Pedersen parameters
+        let cp_parameters = chaum_pedersen_dl_equality::Parameters::new(&gen, shared_key);
 
-        Ok((masked, proof))
+        // Map to Chaum-Pedersen statement
+        let minus_one = -Self::Scalar::one();
+        let negative_original = original_card.0.mul(minus_one).into_affine();
+        let statement_cipher = masked_card.1 + negative_original;
+        let cp_statement =
+            chaum_pedersen_dl_equality::Statement::new(&masked_card.0, &statement_cipher);
+
+        let proof =
+            chaum_pedersen_dl_equality::DLEquality::prove(rng, &cp_parameters, &cp_statement, r)?;
+
+        Ok((masked_card, proof))
+    }
+
+    fn verify_mask(
+        pp: &Self::Parameters,
+        shared_key: &Self::AggregatePublicKey,
+        card: &Self::Card,
+        masked_card: &Self::MaskedCard,
+        proof: &Self::ZKProofMasking,
+    ) -> Result<(), CryptoError> {
+        // Map to Chaum-Pedersen parameters
+        let cp_parameters =
+            chaum_pedersen_dl_equality::Parameters::new(&pp.enc_parameters.generator, shared_key);
+
+        // Map to Chaum-Pedersen statement
+        let minus_one = -Self::Scalar::one();
+        let negative_original = card.0.mul(minus_one).into_affine();
+        let statement_cipher = masked_card.1 + negative_original;
+        let cp_statement =
+            chaum_pedersen_dl_equality::Statement::new(&masked_card.0, &statement_cipher);
+
+        chaum_pedersen_dl_equality::DLEquality::verify(&cp_parameters, &cp_statement, proof)
     }
 
     fn remask<R: Rng>(
         rng: &mut R,
         pp: &Self::Parameters,
         shared_key: &Self::AggregatePublicKey,
-        original: &Self::MaskedCard,
+        original_card: &Self::MaskedCard,
         alpha: &Self::Scalar,
-    ) -> Result<(Self::MaskedCard, Self::ProofRemasking), CardProtocolError> {
-        let remasked = original.remask(&pp.enc_parameters, shared_key, alpha)?;
-        let statement = remasking::Statement::new(*original, remasked, (*pp, *shared_key));
-        let proof = statement.prove(rng, *alpha)?;
+    ) -> Result<(Self::MaskedCard, Self::ZKProofRemasking), CardProtocolError> {
+        let remasked = original_card.remask(&pp.enc_parameters, shared_key, alpha)?;
+
+        // Map to Chaum-Pedersen parameters
+        let cp_parameters =
+            chaum_pedersen_dl_equality::Parameters::new(&pp.enc_parameters.generator, shared_key);
+
+        // Map to Chaum-Pedersen statement
+        let minus_one = -C::ScalarField::one();
+        let negative_original = *original_card * minus_one;
+        let statement_cipher = remasked + negative_original;
+        let cp_statement =
+            chaum_pedersen_dl_equality::Statement::new(&statement_cipher.0, &statement_cipher.1);
+
+        let proof = chaum_pedersen_dl_equality::DLEquality::prove(
+            rng,
+            &cp_parameters,
+            &cp_statement,
+            alpha,
+        )?;
 
         Ok((remasked, proof))
+    }
+
+    fn verify_remask(
+        pp: &Self::Parameters,
+        shared_key: &Self::AggregatePublicKey,
+        original_masked: &Self::MaskedCard,
+        remasked: &Self::MaskedCard,
+        proof: &Self::ZKProofRemasking,
+    ) -> Result<(), CryptoError> {
+        // Map to Chaum-Pedersen parameters
+        let cp_parameters =
+            chaum_pedersen_dl_equality::Parameters::new(&pp.enc_parameters.generator, shared_key);
+
+        // Map to Chaum-Pedersen statement
+        let minus_one = -C::ScalarField::one();
+        let negative_original = *original_masked * minus_one;
+        let statement_cipher = *remasked + negative_original;
+        let cp_statement =
+            chaum_pedersen_dl_equality::Statement::new(&statement_cipher.0, &statement_cipher.1);
+
+        chaum_pedersen_dl_equality::DLEquality::verify(&cp_parameters, &cp_statement, proof)
     }
 
     fn compute_reveal_token<R: Rng>(
@@ -157,33 +270,119 @@ impl<'a, C: ProjectiveCurve> BarnettSmartProtocol for DLCards<'a, C> {
         pp: &Self::Parameters,
         sk: &Self::PlayerSecretKey,
         pk: &Self::PlayerPublicKey,
-        ciphertext: &Self::MaskedCard,
-    ) -> Result<(Self::RevealToken, Self::ProofReveal), CardProtocolError> {
+        masked_card: &Self::MaskedCard,
+    ) -> Result<(Self::RevealToken, Self::ZKProofReveal), CardProtocolError> {
         let reveal_token: RevealToken<C> =
-            el_gamal::Plaintext(ciphertext.0.into().mul(sk.into_repr()).into_affine());
-        let statement = reveal::Statement::new(*ciphertext, reveal_token, (*pp, *pk));
-        let proof = statement.prove(rng, *sk)?;
+            el_gamal::Plaintext(masked_card.0.into().mul(sk.into_repr()).into_affine());
+
+        // Map to Chaum-Pedersen parameters
+        let cp_parameters = chaum_pedersen_dl_equality::Parameters::new(
+            &masked_card.0,
+            &pp.enc_parameters.generator,
+        );
+
+        // Map to Chaum-Pedersen parameters
+        let cp_statement = chaum_pedersen_dl_equality::Statement::new(&reveal_token.0, pk);
+
+        let proof =
+            chaum_pedersen_dl_equality::DLEquality::prove(rng, &cp_parameters, &cp_statement, sk)?;
 
         Ok((reveal_token, proof))
     }
 
+    fn verify_reveal(
+        pp: &Self::Parameters,
+        pk: &Self::PlayerPublicKey,
+        reveal_token: &Self::RevealToken,
+        masked_card: &Self::MaskedCard,
+        proof: &Self::ZKProofReveal,
+    ) -> Result<(), CryptoError> {
+        // Map to Chaum-Pedersen parameters
+        let cp_parameters = chaum_pedersen_dl_equality::Parameters::new(
+            &masked_card.0,
+            &pp.enc_parameters.generator,
+        );
+
+        // Map to Chaum-Pedersen parameters
+        let cp_statement = chaum_pedersen_dl_equality::Statement::new(&reveal_token.0, pk);
+
+        chaum_pedersen_dl_equality::DLEquality::verify(&cp_parameters, &cp_statement, proof)
+    }
+
     fn unmask(
         pp: &Self::Parameters,
-        decryption_key: &Vec<(Self::RevealToken, Self::ProofReveal, Self::PlayerPublicKey)>,
-        cipher: &Self::MaskedCard,
+        decryption_key: &Vec<(Self::RevealToken, Self::ZKProofReveal, Self::PlayerPublicKey)>,
+        masked_card: &Self::MaskedCard,
     ) -> Result<Self::Card, CardProtocolError> {
         let zero = Self::RevealToken::zero();
 
         let mut aggregate_token = zero;
 
         for (token, proof, pk) in decryption_key {
-            let statement = reveal::Statement::new(*cipher, *token, (*pp, *pk));
-            proof.verify(&statement)?;
+            Self::verify_reveal(pp, pk, token, masked_card, proof)?;
+
             aggregate_token = aggregate_token + *token;
         }
 
-        let decrypted = aggregate_token.reveal(cipher)?;
+        let decrypted = aggregate_token.reveal(masked_card)?;
 
         Ok(decrypted)
+    }
+
+    fn shuffle_and_remask<R: Rng>(
+        rng: &mut R,
+        pp: &Self::Parameters,
+        shared_key: &Self::AggregatePublicKey,
+        deck: &Vec<Self::MaskedCard>,
+        masking_factors: &Vec<Self::Scalar>,
+        permutation: &Permutation,
+    ) -> Result<(Vec<Self::MaskedCard>, Self::ZKProofShuffle), CardProtocolError> {
+        let permuted_deck = permutation.permute_array(&deck);
+        let masked_shuffled = permuted_deck
+            .iter()
+            .zip(masking_factors.iter())
+            .map(|(masked_card, masking_factor)| {
+                masked_card.remask(&pp.enc_parameters, &shared_key, masking_factor)
+            })
+            .collect::<Result<Vec<_>, CardProtocolError>>()?;
+
+        let shuffle_parameters = shuffle::Parameters::new(
+            &pp.enc_parameters,
+            shared_key,
+            &pp.commit_parameters,
+            &pp.generator,
+        );
+
+        let shuffle_statement = shuffle::Statement::new(deck, &masked_shuffled, pp.m, pp.n);
+
+        let witness = shuffle::Witness::new(permutation, masking_factors);
+
+        let proof = shuffle::ShuffleArgument::prove(
+            rng,
+            &shuffle_parameters,
+            &shuffle_statement,
+            &witness,
+        )?;
+
+        Ok((masked_shuffled, proof))
+    }
+
+    fn verify_shuffle(
+        pp: &Self::Parameters,
+        shared_key: &Self::AggregatePublicKey,
+        original_deck: &Vec<Self::MaskedCard>,
+        shuffled_deck: &Vec<Self::MaskedCard>,
+        proof: &Self::ZKProofShuffle,
+    ) -> Result<(), CryptoError> {
+        let shuffle_parameters = shuffle::Parameters::new(
+            &pp.enc_parameters,
+            shared_key,
+            &pp.commit_parameters,
+            &pp.generator,
+        );
+
+        let shuffle_statement = shuffle::Statement::new(original_deck, shuffled_deck, pp.m, pp.n);
+
+        shuffle::ShuffleArgument::verify(&shuffle_parameters, &shuffle_statement, proof)
     }
 }

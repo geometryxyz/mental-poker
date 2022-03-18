@@ -79,9 +79,6 @@ mod test {
 
         let statement = Statement::new(&c_chunks, grand_product, &c_a);
 
-        // let prover = multi_exponentiation::prover::Prover::new(&parameters, &statement, &witness);
-        // let proof = prover.prove().unwrap();
-
         let proof = MultiExpArg::prove(rng, &parameters, &statement, &witness).unwrap();
 
         assert_eq!((), proof.verify(&parameters, &statement).unwrap());

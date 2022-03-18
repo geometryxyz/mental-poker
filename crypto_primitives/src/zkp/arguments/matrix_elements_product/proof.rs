@@ -44,7 +44,7 @@ where
             single_value_product::Parameters::new(proof_parameters.n, proof_parameters.commit_key);
 
         let single_value_product_statement =
-            single_value_product::Statement::new(self.b_commit, statement.b);
+            single_value_product::Statement::new(&self.b_commit, statement.b);
 
         self.single_value_proof.verify(
             &single_value_product_parameters,

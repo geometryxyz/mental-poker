@@ -34,11 +34,6 @@ where
     type Witness = Witness<'a, F>;
     type Proof = proof::Proof<F, Enc, Comm>;
 
-    // fn setup<R: Rng>(rng: &mut R) -> Result<Self::CommonReferenceString, CryptoError> {
-    //     let encrypt_parameters = Enc::setup(rng);
-    //     let (pk, _) =
-    // }
-
     fn prove<R: Rng>(
         rng: &mut R,
         common_reference_string: &Self::CommonReferenceString,

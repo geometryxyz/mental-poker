@@ -53,7 +53,7 @@ where
         let mut transcript = Transcript::new(b"single_value_product_argument");
         //public information
         transcript.append(b"commit_key", proof_parameters.commit_key);
-        transcript.append(b"a_commit", &statement.a_commit);
+        transcript.append(b"a_commit", statement.a_commit);
 
         //commits
         transcript.append(b"d_commit", &self.d_commit);
@@ -70,7 +70,7 @@ where
 
         // verify that blinded a is correctly formed
         // let left = statement.a_commit.mul(x.into_repr()) + self.d_commit;
-        let left = statement.a_commit * x + self.d_commit;
+        let left = *statement.a_commit * x + self.d_commit;
         let right = Comm::commit(proof_parameters.commit_key, &self.a_blinded, self.r_blinded)?;
         if left != right {
             return Err(CryptoError::ProofVerificationError(String::from(

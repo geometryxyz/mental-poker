@@ -83,7 +83,7 @@ where
             single_value_product::Witness::new(&product_along_rows, &s);
 
         let single_value_product_statement =
-            single_value_product::Statement::new(b_commit, self.statement.b);
+            single_value_product::Statement::new(&b_commit, self.statement.b);
 
         let single_value_proof = single_value_product::SingleValueProductArgument::prove(
             rng,

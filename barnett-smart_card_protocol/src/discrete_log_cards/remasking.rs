@@ -1,14 +1,10 @@
-use crate::discrete_log_cards::{MaskedCard, Parameters, PublicKey};
+use crate::discrete_log_cards::MaskedCard;
 use crate::error::CardProtocolError;
-use crate::{ComputationStatement, Mask, Provable, Remask, Verifiable};
+use crate::{Mask, Remask};
 
 use ark_ec::ProjectiveCurve;
-use ark_ff::{One, Zero};
-use ark_std::rand::Rng;
-use crypto_primitives::error::CryptoError;
+use ark_ff::Zero;
 use crypto_primitives::homomorphic_encryption::{el_gamal, el_gamal::ElGamal};
-use crypto_primitives::zkp::{proofs::chaum_pedersen_dl_equality, ArgumentOfKnowledge};
-use std::ops::Mul;
 
 impl<C: ProjectiveCurve> Remask<C::ScalarField, ElGamal<C>> for MaskedCard<C> {
     fn remask(
@@ -25,68 +21,95 @@ impl<C: ProjectiveCurve> Remask<C::ScalarField, ElGamal<C>> for MaskedCard<C> {
     }
 }
 
-pub type Statement<C> =
-    ComputationStatement<MaskedCard<C>, MaskedCard<C>, (Parameters<C>, PublicKey<C>)>;
+#[cfg(test)]
+mod test {
+    use crate::discrete_log_cards;
+    use crate::BarnettSmartProtocol;
 
-impl<C: ProjectiveCurve> Statement<C> {
-    pub fn to_chaum_pedersen(
-        &self,
-    ) -> (
-        chaum_pedersen_dl_equality::Parameters<C>,
-        chaum_pedersen_dl_equality::Statement<C>,
-    ) {
-        // Unwrap the statement about cards
-        let input_masked_card = self.input;
-        let output_remasked_card = self.output;
+    use ark_ff::UniformRand;
+    use ark_std::{rand::Rng, Zero};
+    use crypto_primitives::error::CryptoError;
+    use crypto_primitives::zkp::proofs::chaum_pedersen_dl_equality;
+    use rand::thread_rng;
 
-        // Map to Chaum-Pedersen parameters
-        let cp_parameters = chaum_pedersen_dl_equality::Parameters::new(
-            self.public_parameters.0.enc_parameters.generator,
-            self.public_parameters.1,
+    // Choose elliptic curve setting
+    type Curve = starknet_curve::Projective;
+    type Scalar = starknet_curve::Fr;
+
+    // Instantiate concrete type for our card protocol
+    type CardProtocol<'a> = discrete_log_cards::DLCards<'a, Curve>;
+    type CardParameters = discrete_log_cards::Parameters<Curve>;
+    type PublicKey = discrete_log_cards::PublicKey<Curve>;
+    type SecretKey = discrete_log_cards::PlayerSecretKey<Curve>;
+
+    type MaskedCard = discrete_log_cards::MaskedCard<Curve>;
+
+    type RemaskingProof = chaum_pedersen_dl_equality::proof::Proof<Curve>;
+
+    fn setup_players<R: Rng>(
+        rng: &mut R,
+        parameters: &CardParameters,
+        num_of_players: usize,
+    ) -> (Vec<(PublicKey, SecretKey)>, PublicKey) {
+        let mut players: Vec<(PublicKey, SecretKey)> = Vec::with_capacity(num_of_players);
+        let mut expected_shared_key = PublicKey::zero();
+
+        for i in 0..parameters.n {
+            players.push(CardProtocol::player_keygen(rng, &parameters).unwrap());
+            expected_shared_key = expected_shared_key + players[i].0
+        }
+
+        (players, expected_shared_key)
+    }
+
+    #[test]
+    fn test_verify_remasking() {
+        let rng = &mut thread_rng();
+        let m = 4;
+        let n = 13;
+
+        let num_of_players = 10;
+
+        let parameters = CardProtocol::setup(rng, m, n).unwrap();
+
+        let (_, aggregate_key) = setup_players(rng, &parameters, num_of_players);
+
+        let some_masked_card = MaskedCard::rand(rng);
+        let some_random = Scalar::rand(rng);
+
+        let (remasked, remasking_proof): (MaskedCard, RemaskingProof) = CardProtocol::remask(
+            rng,
+            &parameters,
+            &aggregate_key,
+            &some_masked_card,
+            &some_random,
+        )
+        .unwrap();
+
+        assert_eq!(
+            Ok(()),
+            CardProtocol::verify_remask(
+                &parameters,
+                &aggregate_key,
+                &some_masked_card,
+                &remasked,
+                &remasking_proof
+            )
         );
 
-        // Map to Chaum-Pedersen statement
-        let minus_one = -C::ScalarField::one();
-        let negative_original = input_masked_card.mul(minus_one);
-        let statement_cipher = output_remasked_card + negative_original;
-        let cp_statement =
-            chaum_pedersen_dl_equality::Statement::new(statement_cipher.0, statement_cipher.1);
+        let wrong_output = MaskedCard::rand(rng);
 
-        (cp_parameters, cp_statement)
-    }
-}
-
-pub struct Proof<C: ProjectiveCurve>(pub chaum_pedersen_dl_equality::proof::Proof<C>);
-
-impl<C: ProjectiveCurve> Provable<chaum_pedersen_dl_equality::DLEquality<C>> for Statement<C> {
-    type Output = Proof<C>;
-    type Witness = C::ScalarField;
-
-    fn prove<R: Rng>(
-        &self,
-        rng: &mut R,
-        witness: Self::Witness,
-    ) -> Result<Self::Output, CryptoError> {
-        let (cp_parameters, cp_statement) = self.to_chaum_pedersen();
-
-        // Use witness to prove the statement
-        let cp_proof = chaum_pedersen_dl_equality::DLEquality::prove(
-            rng,
-            &cp_parameters,
-            &cp_statement,
-            &witness,
-        )?;
-
-        Ok(Proof(cp_proof))
-    }
-}
-
-impl<C: ProjectiveCurve> Verifiable<chaum_pedersen_dl_equality::DLEquality<C>> for Proof<C> {
-    type Statement = Statement<C>;
-
-    fn verify(&self, statement: &Self::Statement) -> Result<(), CryptoError> {
-        let (cp_parameters, cp_statement) = statement.to_chaum_pedersen();
-
-        chaum_pedersen_dl_equality::DLEquality::verify(&cp_parameters, &cp_statement, &self.0)
+        assert_eq!(
+            CardProtocol::verify_remask(
+                &parameters,
+                &aggregate_key,
+                &some_masked_card,
+                &wrong_output,
+                &remasking_proof
+            ),
+            Err(CryptoError::ProofVerificationError(String::from(
+                "Chaum-Pedersen"
+            )))
+        )
     }
 }

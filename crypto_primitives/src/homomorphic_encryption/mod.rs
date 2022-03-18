@@ -42,6 +42,9 @@ pub trait HomomorphicEncryptionScheme<Scalar: Field> {
     /// Generate the scheme's parameters.
     fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, CryptoError>;
 
+    /// Return a generator for the used group
+    fn generator<R: Rng>(rng: &mut R) -> Result<Self::Generator, CryptoError>;
+
     /// Generate a public key and a private key.
     fn keygen<R: Rng>(
         pp: &Self::Parameters,

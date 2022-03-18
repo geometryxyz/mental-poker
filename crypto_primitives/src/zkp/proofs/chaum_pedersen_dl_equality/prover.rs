@@ -27,10 +27,10 @@ where
         witness: &Witness<C>,
     ) -> Proof<C> {
         let mut transcript = Transcript::new(b"chaum_pedersen");
-        transcript.append(b"g", &parameters.g);
-        transcript.append(b"h", &parameters.h);
-        transcript.append(b"x", &statement.0);
-        transcript.append(b"y", &statement.1);
+        transcript.append(b"g", parameters.g);
+        transcript.append(b"h", parameters.h);
+        transcript.append(b"x", statement.0);
+        transcript.append(b"y", statement.1);
 
         let omega = C::ScalarField::rand(rng);
         let a = parameters.g.mul(omega.into_repr());
@@ -41,7 +41,7 @@ where
 
         let c: C::ScalarField = transcript.challenge_scalar(b"c");
 
-        let r = omega + c * witness;
+        let r = omega + c * *witness;
 
         Proof { a, b, r }
     }

@@ -18,7 +18,7 @@ where
 {
     parameters: &'a Parameters<'a, Scalar, Comm>,
     transcript: Transcript,
-    statement: &'a Statement<Scalar, Comm>,
+    statement: &'a Statement<'a, Scalar, Comm>,
     witness: &'a Witness<'a, Scalar>,
 }
 
@@ -102,7 +102,7 @@ where
 
         //public information
         transcript.append(b"commit_key", self.parameters.commit_key);
-        transcript.append(b"a_commit", &self.statement.a_commit);
+        transcript.append(b"a_commit", self.statement.a_commit);
 
         //commits
         transcript.append(b"d_commit", &d_commit);

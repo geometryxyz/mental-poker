@@ -24,11 +24,9 @@ where
     Comm: HomomorphicCommitmentScheme<Scalar>,
 {
     type CommonReferenceString = Parameters<'a, Scalar, Comm>;
-    type Statement = Statement<Scalar, Comm>;
+    type Statement = Statement<'a, Scalar, Comm>;
     type Witness = Witness<'a, Scalar>;
     type Proof = proof::Proof<Scalar, Comm>;
-
-    // // fn setup<R: Rng>(rng: &mut R) -> Result<Self::CommonReferenceString, CryptoError>;
 
     fn prove<R: Rng>(
         rng: &mut R,
@@ -87,21 +85,21 @@ impl<'a, Scalar: Field> Witness<'a, Scalar> {
 }
 
 /// Statement
-pub struct Statement<Scalar, Comm>
+pub struct Statement<'a, Scalar, Comm>
 where
     Scalar: Field,
     Comm: HomomorphicCommitmentScheme<Scalar>,
 {
-    pub a_commit: Comm::Commitment,
+    pub a_commit: &'a Comm::Commitment,
     pub b: Scalar,
 }
 
-impl<Scalar, Comm> Statement<Scalar, Comm>
+impl<'a, Scalar, Comm> Statement<'a, Scalar, Comm>
 where
     Scalar: Field,
     Comm: HomomorphicCommitmentScheme<Scalar>,
 {
-    pub fn new(a_commit: Comm::Commitment, b: Scalar) -> Self {
+    pub fn new(a_commit: &'a Comm::Commitment, b: Scalar) -> Self {
         Self { a_commit, b }
     }
 }

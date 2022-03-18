@@ -27,8 +27,6 @@ where
     type Witness = Witness<'a, Scalar>;
     type Proof = proof::Proof<Scalar, Comm>;
 
-    // // fn setup<R: Rng>(rng: &mut R) -> Result<Self::CommonReferenceString, CryptoError>;
-
     fn prove<R: Rng>(
         rng: &mut R,
         common_reference_string: &Self::CommonReferenceString,
