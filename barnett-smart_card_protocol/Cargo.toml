@@ -1,0 +1,19 @@
+[package]
+name = "barnett-smart_card_protocol"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.55"
+ark-crypto-primitives = "0.3.0"
+ark-ec = "0.3.0"
+ark-ff = "0.3.0"
+ark-serialize = "0.3.0"
+ark-std = { version = "0.3.0", features = ["std"] }
+crypto_primitives = { path = "../crypto_primitives" }
+merlin = "3.0.0"
+rand = "0.8.4"
+starknet_curve = { path = "../starknet_curve" }
+thiserror = "1.0.30"
