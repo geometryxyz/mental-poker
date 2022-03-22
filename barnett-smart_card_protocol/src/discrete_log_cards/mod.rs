@@ -58,22 +58,22 @@ impl<C: ProjectiveCurve> Parameters<C> {
     }
 }
 
-type PublicKey<C> = el_gamal::PublicKey<C>;
+pub type PublicKey<C> = el_gamal::PublicKey<C>;
 
-type PlayerSecretKey<C> = el_gamal::SecretKey<C>;
+pub type PlayerSecretKey<C> = el_gamal::SecretKey<C>;
 
 /// An open playing card. In this Discrete Log-based implementation of the Barnett-Smart card protocol
 /// a card is an el-Gamal plaintext. We create a type alias to implement the `Mask` trait on it.
-type Card<C> = el_gamal::Plaintext<C>;
+pub type Card<C> = el_gamal::Plaintext<C>;
 
 /// A masked (flipped) playing card. Note that a player masking a card will know the mapping from
 /// open to masked card. All other players must remask to guarantee that the card is privately masked.
 /// We create a type alias to implement the `Mask` trait on it.
-type MaskedCard<C> = el_gamal::Ciphertext<C>;
+pub type MaskedCard<C> = el_gamal::Ciphertext<C>;
 
 /// A `RevealToken` is computed by players when they wish to reveal a given card. These tokens can
 /// then be aggregated to reveal the card.
-type RevealToken<C> = el_gamal::Plaintext<C>;
+pub type RevealToken<C> = el_gamal::Plaintext<C>;
 
 // type ShuffleArg<'a, C: ProjectiveCurve> =
 //     shuffle::ShuffleArgument<'a, C::ScalarField, ElGamal<C>, PedersenCommitment<C>>;

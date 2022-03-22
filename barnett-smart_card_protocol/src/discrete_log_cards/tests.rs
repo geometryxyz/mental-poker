@@ -39,7 +39,7 @@ mod test {
         let mut players: Vec<(PublicKey, SecretKey)> = Vec::with_capacity(num_of_players);
         let mut expected_shared_key = PublicKey::zero();
 
-        for i in 0..parameters.n {
+        for i in 0..num_of_players {
             players.push(CardProtocol::player_keygen(rng, &parameters).unwrap());
             expected_shared_key = expected_shared_key + players[i].0
         }
@@ -154,6 +154,7 @@ mod test {
                     &masked,
                 )
                 .unwrap();
+
                 (token, proof, player.0)
             })
             .collect::<Vec<_>>();

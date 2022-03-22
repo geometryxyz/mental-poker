@@ -18,3 +18,11 @@ thiserror = "1.0.30"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
+
+[dev-dependencies]
+criterion = "0.3"
+wasm-bindgen-test = "0.3.29"
+
+[[bench]]
+name = "shuffle"
+harness = false

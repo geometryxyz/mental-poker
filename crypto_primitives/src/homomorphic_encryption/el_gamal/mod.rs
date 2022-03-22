@@ -9,6 +9,7 @@ use ark_std::{
     marker::PhantomData,
     rand::Rng,
 };
+use std::hash::Hash;
 
 pub mod arithmetic_definitions;
 mod tests;
@@ -24,7 +25,7 @@ pub struct Parameters<C: ProjectiveCurve> {
 
 pub type PublicKey<C> = <C as ProjectiveCurve>::Affine;
 
-#[derive(Clone, Copy, PartialEq, Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Plaintext<C: ProjectiveCurve>(pub C::Affine);
 
 pub type Generator<C> = Plaintext<C>;

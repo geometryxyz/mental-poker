@@ -8,6 +8,7 @@ use crypto_primitives::homomorphic_encryption::HomomorphicEncryptionScheme;
 use crypto_primitives::utils::permutation::Permutation;
 use crypto_primitives::vector_commitment::HomomorphicCommitmentScheme;
 use std::ops::{Add, Mul};
+use std::hash::Hash;
 
 pub mod discrete_log_cards;
 pub mod error;
@@ -52,7 +53,9 @@ pub trait BarnettSmartProtocol {
         + Clone
         + Mask<Self::Scalar, Self::Enc>
         + CanonicalDeserialize
-        + CanonicalSerialize;
+        + CanonicalSerialize
+        + Hash
+        + Eq;
     type MaskedCard: Remask<Self::Scalar, Self::Enc> + CanonicalDeserialize + CanonicalSerialize;
     type RevealToken: Add
         + Reveal<Self::Scalar, Self::Enc>

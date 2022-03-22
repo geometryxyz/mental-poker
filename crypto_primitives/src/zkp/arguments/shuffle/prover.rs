@@ -82,7 +82,6 @@ where
         let x: Scalar = transcript.challenge_scalar(b"x");
 
         let challenge_powers = scalar_powers(x, self.witness.permutation.size)[1..].to_vec();
-        println!("prover {}", challenge_powers.len());
 
         let b = self.witness.permutation.permute_array(&challenge_powers);
         let s: Vec<Scalar> = sample_vector(rng, self.statement.m);

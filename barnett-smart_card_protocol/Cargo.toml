@@ -17,3 +17,6 @@ merlin = "3.0.0"
 rand = "0.8.4"
 starknet_curve = { path = "../starknet_curve" }
 thiserror = "1.0.30"
+
+[[example]]
+name = "round"
