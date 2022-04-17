@@ -7,8 +7,8 @@ use crypto_primitives::error::CryptoError;
 use crypto_primitives::homomorphic_encryption::HomomorphicEncryptionScheme;
 use crypto_primitives::utils::permutation::Permutation;
 use crypto_primitives::vector_commitment::HomomorphicCommitmentScheme;
-use std::ops::{Add, Mul};
 use std::hash::Hash;
+use std::ops::{Add, Mul};
 
 pub mod discrete_log_cards;
 pub mod error;

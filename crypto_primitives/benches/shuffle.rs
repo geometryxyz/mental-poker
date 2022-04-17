@@ -1,13 +1,13 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
 use crypto_primitives::homomorphic_encryption::{el_gamal, HomomorphicEncryptionScheme};
 use crypto_primitives::utils::rand::sample_vector;
 use crypto_primitives::vector_commitment::{pedersen, HomomorphicCommitmentScheme};
 use crypto_primitives::zkp::{arguments::shuffle, ArgumentOfKnowledge};
 
-use crypto_primitives::utils::permutation::Permutation;
 use ark_ff::Zero;
 use ark_std::{rand::thread_rng, UniformRand};
+use crypto_primitives::utils::permutation::Permutation;
 use starknet_curve;
 use std::iter::Iterator;
 
@@ -61,7 +61,13 @@ fn criterion_benchmark(c: &mut Criterion) {
             })
             .collect::<Vec<_>>();
 
-        (commit_key, ciphers, masking_factors, permutation, shuffled_ciphers)
+        (
+            commit_key,
+            ciphers,
+            masking_factors,
+            permutation,
+            shuffled_ciphers,
+        )
     };
 
     // test for pairs (m, n) such that m = number_of_chunks, n = len_of_chunk and m*n is the number of ciphertexts
@@ -72,11 +78,13 @@ fn criterion_benchmark(c: &mut Criterion) {
         let mut group = c.benchmark_group("PROVING");
         group.sample_size(10);
         for (m, n) in num_of_chunks_x_chunk_length.clone() {
-            let (commit_key, ciphers, masking_factors, permutation, shuffled_ciphers) = prepare_proof_parameters(m, n);
+            let (commit_key, ciphers, masking_factors, permutation, shuffled_ciphers) =
+                prepare_proof_parameters(m, n);
             let parameters = Parameters::new(&encrypt_parameters, &pk, &commit_key, &generator);
             let statement = Statement::new(&ciphers, &shuffled_ciphers, m, n);
             let witness = Witness::new(&permutation, &masking_factors);
-            let bench_id = BenchmarkId::new("number_of_ciphers:", format!("({} * {} = {})", m, n, m*n));
+            let bench_id =
+                BenchmarkId::new("number_of_ciphers:", format!("({} * {} = {})", m, n, m * n));
             group.bench_function(bench_id, |b| {
                 b.iter(|| {
                     ShuffleArgument::prove(&mut rng, &parameters, &statement, &witness).unwrap();
@@ -89,20 +97,21 @@ fn criterion_benchmark(c: &mut Criterion) {
         let mut group = c.benchmark_group("VERIFYING");
         group.sample_size(10);
         for (m, n) in num_of_chunks_x_chunk_length.clone() {
-            let (commit_key, ciphers, masking_factors, permutation, shuffled_ciphers) = prepare_proof_parameters(m, n);
+            let (commit_key, ciphers, masking_factors, permutation, shuffled_ciphers) =
+                prepare_proof_parameters(m, n);
             let parameters = Parameters::new(&encrypt_parameters, &pk, &commit_key, &generator);
             let statement = Statement::new(&ciphers, &shuffled_ciphers, m, n);
             let witness = Witness::new(&permutation, &masking_factors);
-            let proof = ShuffleArgument::prove(&mut rng, &parameters, &statement, &witness).unwrap();
+            let proof =
+                ShuffleArgument::prove(&mut rng, &parameters, &statement, &witness).unwrap();
             assert_eq!(
                 Ok(()),
                 ShuffleArgument::verify(&parameters, &statement, &proof)
             );
-            let bench_id = BenchmarkId::new("number_of_ciphers:", format!("({} * {} = {})", m, n, m*n));
+            let bench_id =
+                BenchmarkId::new("number_of_ciphers:", format!("({} * {} = {})", m, n, m * n));
             group.bench_function(bench_id, |b| {
-                b.iter(|| {
-                    ShuffleArgument::verify(&parameters, &statement, &proof)
-                })
+                b.iter(|| ShuffleArgument::verify(&parameters, &statement, &proof))
             });
         }
     }
