@@ -1,0 +1,28 @@
+[package]
+name = "crypto_primitives"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ark-crypto-primitives = "0.3.0"
+ark-ec = "0.3.0"
+ark-ff = "0.3.0"
+ark-serialize = "0.3.0"
+ark-std = { version = "0.3.0", features = ["std"] }
+merlin = "3.0.0"
+rand = "0.8.4"
+starknet_curve = { path = "../starknet_curve" }
+thiserror = "1.0.30"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
+
+[dev-dependencies]
+criterion = "0.3"
+wasm-bindgen-test = "0.3.29"
+
+[[bench]]
+name = "shuffle"
+harness = false
