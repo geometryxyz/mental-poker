@@ -16,7 +16,7 @@ This library is developed as part of the collaboration between Geometry and Matc
 
 ## License
 
-&copy; 2022 [Geometry](https://geometrydao.xyz).
+&copy; 2022 [Geometry](https://geometryresearch.xyz).
 
 This project is licensed under either of
 
