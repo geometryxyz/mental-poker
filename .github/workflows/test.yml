@@ -13,7 +13,7 @@ jobs:
     name: Check Style
     runs-on: ubuntu-latest
     steps:
-      - uses: webfactory/ssh-agent@v0.5.4
+      - uses: shaunco/ssh-agent@git-repo-mapping
         with:
             ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
             repo-mappings: github.com/geometryresearch/proof-toolbox
@@ -43,7 +43,7 @@ jobs:
         rust:
           - stable
     steps:
-      - uses: webfactory/ssh-agent@v0.5.4
+      - uses: shaunco/ssh-agent@git-repo-mapping
         with:
             ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
             repo-mappings: github.com/geometryresearch/proof-toolbox
@@ -74,7 +74,7 @@ jobs:
         target:
           - wasm32-unknown-unknown
     steps:
-      - uses: webfactory/ssh-agent@v0.5.4
+      - uses: shaunco/ssh-agent@git-repo-mapping
         with:
             ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
             repo-mappings: github.com/geometryresearch/proof-toolbox
