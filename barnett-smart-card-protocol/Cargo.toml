@@ -1,5 +1,5 @@
 [package]
-name = "barnett-smart_card_protocol"
+name = "barnett-smart-card-protocol"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,10 +12,10 @@ ark-ec = "0.3.0"
 ark-ff = "0.3.0"
 ark-serialize = "0.3.0"
 ark-std = { version = "0.3.0", features = ["std"] }
-proof-essentials = { git = "https://github.com/geometryresearch/proof-toolbox" }
+proof-essentials = { git = "git@github.com:geometryresearch/proof-toolbox" }
 merlin = "3.0.0"
 rand = "0.8.4"
-starknet-curve = { git = "https://github.com/geometryresearch/proof-toolbox" }
+starknet-curve = { git = "git@github.com:geometryresearch/proof-toolbox" }
 thiserror = "1.0.30"
 
 [[example]]
