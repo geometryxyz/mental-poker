@@ -8,14 +8,14 @@ use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{One, PrimeField};
 use ark_std::rand::Rng;
 use ark_std::Zero;
-use crypto_primitives::error::CryptoError;
-use crypto_primitives::homomorphic_encryption::{
+use proof_essentials::error::CryptoError;
+use proof_essentials::homomorphic_encryption::{
     el_gamal, el_gamal::ElGamal, HomomorphicEncryptionScheme,
 };
-use crypto_primitives::utils::permutation::Permutation;
-use crypto_primitives::vector_commitment::pedersen::PedersenCommitment;
-use crypto_primitives::vector_commitment::{pedersen, HomomorphicCommitmentScheme};
-use crypto_primitives::zkp::{
+use proof_essentials::utils::permutation::Permutation;
+use proof_essentials::vector_commitment::pedersen::PedersenCommitment;
+use proof_essentials::vector_commitment::{pedersen, HomomorphicCommitmentScheme};
+use proof_essentials::zkp::{
     arguments::shuffle,
     proofs::{chaum_pedersen_dl_equality, schnorr_identification},
     ArgumentOfKnowledge,

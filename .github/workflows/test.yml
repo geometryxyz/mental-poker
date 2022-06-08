@@ -14,7 +14,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v1
-
+      - uses: webfactory/ssh-agent@v0.5.4
+	with:
+	    ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+            repo-mappings: github.com/geometryresearch/proof-toolbox
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -41,7 +44,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-
+      - uses: webfactory/ssh-agent@v0.5.4
+	with:
+	    ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+            repo-mappings: github.com/geometryresearch/proof-toolbox
       - name: Install Rust (${{ matrix.rust }})
         uses: actions-rs/toolchain@v1
         with:
@@ -69,7 +75,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-
+      - uses: webfactory/ssh-agent@v0.5.4
+	with:
+	    ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+            repo-mappings: github.com/geometryresearch/proof-toolbox
       - name: Install Rust (${{ matrix.rust }})
         uses: actions-rs/toolchain@v1
         with:

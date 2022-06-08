@@ -6,11 +6,11 @@ mod test {
 
     use ark_ff::UniformRand;
     use ark_std::{rand::Rng, Zero};
-    use crypto_primitives::error::CryptoError;
-    use crypto_primitives::utils::permutation::Permutation;
-    use crypto_primitives::utils::rand::sample_vector;
-    use crypto_primitives::zkp::proofs::schnorr_identification;
-    use crypto_primitives::zkp::ArgumentOfKnowledge;
+    use proof_essentials::error::CryptoError;
+    use proof_essentials::utils::permutation::Permutation;
+    use proof_essentials::utils::rand::sample_vector;
+    use proof_essentials::zkp::proofs::schnorr_identification;
+    use proof_essentials::zkp::ArgumentOfKnowledge;
     use rand::thread_rng;
     use std::iter::Iterator;
 

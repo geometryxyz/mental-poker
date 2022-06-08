@@ -4,7 +4,7 @@ use crate::Reveal;
 
 use ark_ec::ProjectiveCurve;
 use ark_ff::One;
-use crypto_primitives::homomorphic_encryption::{el_gamal, el_gamal::ElGamal};
+use proof_essentials::homomorphic_encryption::{el_gamal, el_gamal::ElGamal};
 
 impl<C: ProjectiveCurve> Reveal<C::ScalarField, ElGamal<C>> for RevealToken<C> {
     fn reveal(
@@ -25,8 +25,8 @@ mod test {
     use crate::BarnettSmartProtocol;
 
     use ark_ff::UniformRand;
-    use crypto_primitives::error::CryptoError;
-    use crypto_primitives::zkp::proofs::chaum_pedersen_dl_equality;
+    use proof_essentials::error::CryptoError;
+    use proof_essentials::zkp::proofs::chaum_pedersen_dl_equality;
     use rand::thread_rng;
 
     // Choose elliptic curve setting

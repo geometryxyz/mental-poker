@@ -3,10 +3,10 @@ use crate::error::CardProtocolError;
 use ark_ff::Field;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::Rng;
-use crypto_primitives::error::CryptoError;
-use crypto_primitives::homomorphic_encryption::HomomorphicEncryptionScheme;
-use crypto_primitives::utils::permutation::Permutation;
-use crypto_primitives::vector_commitment::HomomorphicCommitmentScheme;
+use proof_essentials::error::CryptoError;
+use proof_essentials::homomorphic_encryption::HomomorphicEncryptionScheme;
+use proof_essentials::utils::permutation::Permutation;
+use proof_essentials::vector_commitment::HomomorphicCommitmentScheme;
 use std::hash::Hash;
 use std::ops::{Add, Mul};
 
