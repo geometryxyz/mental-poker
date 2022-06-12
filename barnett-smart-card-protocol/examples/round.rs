@@ -2,7 +2,7 @@ use barnett_smart_card_protocol::discrete_log_cards;
 use barnett_smart_card_protocol::BarnettSmartProtocol;
 
 use anyhow;
-use ark_ff::{UniformRand, to_bytes};
+use ark_ff::{to_bytes, UniformRand};
 use ark_std::{rand::Rng, One};
 use proof_essentials::utils::permutation::Permutation;
 use proof_essentials::utils::rand::sample_vector;
