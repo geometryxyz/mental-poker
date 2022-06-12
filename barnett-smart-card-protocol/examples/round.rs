@@ -2,7 +2,7 @@ use barnett_smart_card_protocol::discrete_log_cards;
 use barnett_smart_card_protocol::BarnettSmartProtocol;
 
 use anyhow;
-use ark_ff::UniformRand;
+use ark_ff::{UniformRand, to_bytes};
 use ark_std::{rand::Rng, One};
 use proof_essentials::utils::permutation::Permutation;
 use proof_essentials::utils::rand::sample_vector;
@@ -129,7 +129,7 @@ impl std::fmt::Debug for ClassicPlayingCard {
 
 #[derive(Clone)]
 struct Player {
-    _name: String,
+    name: Vec<u8>,
     sk: SecretKey,
     pk: PublicKey,
     proof_key: ProofKeyOwnership,
@@ -138,11 +138,11 @@ struct Player {
 }
 
 impl Player {
-    pub fn new<R: Rng>(rng: &mut R, pp: &CardParameters, name: String) -> anyhow::Result<Self> {
+    pub fn new<R: Rng>(rng: &mut R, pp: &CardParameters, name: &Vec<u8>) -> anyhow::Result<Self> {
         let (pk, sk) = CardProtocol::player_keygen(rng, pp)?;
-        let proof_key = CardProtocol::prove_key_ownership(rng, pp, &pk, &sk)?;
+        let proof_key = CardProtocol::prove_key_ownership(rng, pp, &pk, &sk, name)?;
         Ok(Self {
-            _name: name,
+            name: name.clone(),
             sk,
             pk,
             proof_key,
@@ -234,20 +234,20 @@ fn main() -> anyhow::Result<()> {
     let parameters = CardProtocol::setup(rng, m, n)?;
     let card_mapping = encode_cards(rng, num_of_cards);
 
-    let mut andrija = Player::new(rng, &parameters, String::from("andrija"))?;
-    let mut kobi = Player::new(rng, &parameters, String::from("kobi"))?;
-    let mut nico = Player::new(rng, &parameters, String::from("nico"))?;
-    let mut tom = Player::new(rng, &parameters, String::from("tom"))?;
+    let mut andrija = Player::new(rng, &parameters, &to_bytes![b"Andrija"].unwrap())?;
+    let mut kobi = Player::new(rng, &parameters, &to_bytes![b"Kobi"].unwrap())?;
+    let mut nico = Player::new(rng, &parameters, &to_bytes![b"Nico"].unwrap())?;
+    let mut tom = Player::new(rng, &parameters, &to_bytes![b"Tom"].unwrap())?;
 
     let players = vec![andrija.clone(), kobi.clone(), nico.clone(), tom.clone()];
 
-    let key_proof_pairs = players
+    let key_proof_info = players
         .iter()
-        .map(|p| (p.pk, p.proof_key))
+        .map(|p| (p.pk, p.proof_key, p.name.clone()))
         .collect::<Vec<_>>();
 
     // Each player should run this computation. Alternatively, it can be ran by a smart contract
-    let joint_pk = CardProtocol::compute_aggregate_key(&parameters, &key_proof_pairs)?;
+    let joint_pk = CardProtocol::compute_aggregate_key(&parameters, &key_proof_info)?;
 
     // Each player should run this computation and verify that all players agree on the initial deck
     let deck_and_proofs: Vec<(MaskedCard, RemaskingProof)> = card_mapping

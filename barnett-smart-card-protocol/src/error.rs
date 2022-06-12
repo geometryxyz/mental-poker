@@ -6,4 +6,13 @@ use thiserror::Error;
 pub enum CardProtocolError {
     #[error("Failed to verify proof")]
     ProofVerificationError(#[from] CryptoError),
+
+    #[error("IoError: {0}")]
+    IoError(String),
+}
+
+impl From<std::io::Error> for CardProtocolError {
+    fn from(err: std::io::Error) -> Self {
+        Self::IoError(err.to_string())
+    }
 }

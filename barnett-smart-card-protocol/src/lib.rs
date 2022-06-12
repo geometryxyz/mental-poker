@@ -1,6 +1,6 @@
 use crate::error::CardProtocolError;
 
-use ark_ff::Field;
+use ark_ff::{Field, ToBytes};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::Rng;
 use proof_essentials::error::CryptoError;
@@ -84,24 +84,26 @@ pub trait BarnettSmartProtocol {
     ) -> Result<(Self::PlayerPublicKey, Self::PlayerSecretKey), CardProtocolError>;
 
     /// Prove in zero knowledge that the owner of a public key `pk` knows the corresponding secret key `sk`
-    fn prove_key_ownership<R: Rng>(
+    fn prove_key_ownership<B: ToBytes, R: Rng>(
         rng: &mut R,
         pp: &Self::Parameters,
         pk: &Self::PlayerPublicKey,
         sk: &Self::PlayerSecretKey,
+        player_public_info: &B,
     ) -> Result<Self::ZKProofKeyOwnership, CryptoError>;
 
     /// Verify a proof od key ownership
-    fn verify_key_ownership(
+    fn verify_key_ownership<B: ToBytes>(
         pp: &Self::Parameters,
         pk: &Self::PlayerPublicKey,
+        player_public_info: &B,
         proof: &Self::ZKProofKeyOwnership,
     ) -> Result<(), CryptoError>;
 
     /// Use all the public keys and zk-proofs to compute a verified aggregate public key
-    fn compute_aggregate_key(
+    fn compute_aggregate_key<B: ToBytes>(
         pp: &Self::Parameters,
-        player_keys: &Vec<(Self::PlayerPublicKey, Self::ZKProofKeyOwnership)>,
+        player_keys_proof_info: &Vec<(Self::PlayerPublicKey, Self::ZKProofKeyOwnership, B)>,
     ) -> Result<Self::AggregatePublicKey, CardProtocolError>;
 
     /// Use the shared public key and a (private) random scalar `alpha` to mask a card.

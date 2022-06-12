@@ -10,10 +10,12 @@ anyhow = "1.0.55"
 ark-crypto-primitives = "0.3.0"
 ark-ec = "0.3.0"
 ark-ff = "0.3.0"
+ark-marlin = "0.3.0"
 ark-serialize = "0.3.0"
 ark-std = { version = "0.3.0", features = ["std"] }
-proof-essentials = { git = "ssh://git@github.com/geometryresearch/proof-toolbox.git" }
+blake2 = { version = "0.9", default-features = false }
 merlin = "3.0.0"
+proof-essentials = { git = "ssh://git@github.com/geometryresearch/proof-toolbox.git" }
 rand = "0.8.4"
 starknet-curve = { git = "ssh://git@github.com/geometryresearch/proof-toolbox.git" }
 thiserror = "1.0.30"
