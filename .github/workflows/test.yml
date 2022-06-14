@@ -6,15 +6,18 @@ on:
       - master
 env:
   RUST_BACKTRACE: 1
+  CARGO_NET_GIT_FETCH_WITH_CLI: true
 
 jobs:
   style:
     name: Check Style
     runs-on: ubuntu-latest
     steps:
+      - uses: webfactory/ssh-agent@v0.5.4
+        with:
+            ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Checkout
         uses: actions/checkout@v1
-
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -39,9 +42,11 @@ jobs:
         rust:
           - stable
     steps:
+      - uses: webfactory/ssh-agent@v0.5.4
+        with:
+            ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Checkout
         uses: actions/checkout@v2
-
       - name: Install Rust (${{ matrix.rust }})
         uses: actions-rs/toolchain@v1
         with:
@@ -67,9 +72,11 @@ jobs:
         target:
           - wasm32-unknown-unknown
     steps:
+      - uses: webfactory/ssh-agent@v0.5.4
+        with:
+            ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Checkout
         uses: actions/checkout@v2
-
       - name: Install Rust (${{ matrix.rust }})
         uses: actions-rs/toolchain@v1
         with:

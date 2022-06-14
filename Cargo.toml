@@ -1,7 +1,5 @@
 [workspace]
 
 members = [
-    "crypto_primitives",
-    "starknet_curve",
-    "barnett-smart_card_protocol"
+    "barnett-smart-card-protocol"
 ]
