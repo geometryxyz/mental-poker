@@ -226,8 +226,8 @@ fn encode_cards<R: Rng>(rng: &mut R, num_of_cards: usize) -> HashMap<Card, Class
 }
 
 fn main() -> anyhow::Result<()> {
-    let m = 2;
-    let n = 26;
+    let m = 4;
+    let n = 13;
     let num_of_cards = m * n;
     let rng = &mut thread_rng();
 
@@ -350,6 +350,7 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     // CARDS ARE SHUFFLED. ROUND OF THE GAME CAN BEGIN
+    let deck = final_shuffled_deck;
 
     andrija.recieve_card(deck[0]);
     kobi.recieve_card(deck[1]);
@@ -369,8 +370,8 @@ fn main() -> anyhow::Result<()> {
     let nico_rt_3 = nico.compute_reveal_token(rng, &parameters, &deck[3])?;
 
     let tom_rt_0 = tom.compute_reveal_token(rng, &parameters, &deck[0])?;
-    let tom_rt_1 = tom.compute_reveal_token(rng, &parameters, &deck[2])?;
-    let tom_rt_2 = tom.compute_reveal_token(rng, &parameters, &deck[1])?;
+    let tom_rt_1 = tom.compute_reveal_token(rng, &parameters, &deck[1])?;
+    let tom_rt_2 = tom.compute_reveal_token(rng, &parameters, &deck[2])?;
 
     let mut rts_andrija = vec![kobi_rt_0, nico_rt_0, tom_rt_0];
     let mut rts_kobi = vec![andrija_rt_1, nico_rt_1, tom_rt_1];
@@ -412,8 +413,8 @@ fn main() -> anyhow::Result<()> {
     let nico_rt_3 = nico.compute_reveal_token(rng, &parameters, &deck[3])?;
 
     let tom_rt_0 = tom.compute_reveal_token(rng, &parameters, &deck[0])?;
-    let tom_rt_1 = tom.compute_reveal_token(rng, &parameters, &deck[2])?;
-    let tom_rt_2 = tom.compute_reveal_token(rng, &parameters, &deck[1])?;
+    let tom_rt_1 = tom.compute_reveal_token(rng, &parameters, &deck[1])?;
+    let tom_rt_2 = tom.compute_reveal_token(rng, &parameters, &deck[2])?;
 
     let rt_0 = vec![andrija_rt_0, kobi_rt_0, nico_rt_0, tom_rt_0];
     let rt_1 = vec![andrija_rt_1, kobi_rt_1, nico_rt_1, tom_rt_1];
