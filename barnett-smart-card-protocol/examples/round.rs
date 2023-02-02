@@ -226,8 +226,8 @@ fn encode_cards<R: Rng>(rng: &mut R, num_of_cards: usize) -> HashMap<Card, Class
 }
 
 fn main() -> anyhow::Result<()> {
-    let m = 4;
-    let n = 13;
+    let m = 2;
+    let n = 26;
     let num_of_cards = m * n;
     let rng = &mut thread_rng();
 
