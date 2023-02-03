@@ -20,5 +20,9 @@ rand = "0.8.4"
 starknet-curve = { git = "ssh://git@github.com/geometryresearch/proof-toolbox.git" }
 thiserror = "1.0.30"
 
+[dev-dependencies]
+ark-bls12-377 = "0.3.0"
+byte-unit = "4.0.14"
+
 [[example]]
 name = "round"
