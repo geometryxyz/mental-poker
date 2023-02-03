@@ -2,7 +2,7 @@
 //! As per the Bayer-Groth paper, for a deck of $N = m \times n$ cards:
 //! - the prover performs m*N exponentiations
 //! - the proof is approximately 6m*|G|+4n*|Z| where |G| is the size of a EC point and |Z| is the size of a scalar
-//! (note that this is because we are no using the FFT-like improvement suggested in the paper)
+//! (note that this is because we are not using the FFT-like improvement suggested in the paper)
 //! 
 //! Analysis: increasing m will always increase the prover time. Assuming |G| ≈≈ 2*|Z|, proof size is approx 12m+4n and will
 //! be minimised when m ≈≈ n/3.
