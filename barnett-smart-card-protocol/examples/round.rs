@@ -151,7 +151,7 @@ impl Player {
         })
     }
 
-    pub fn recieve_card(&mut self, card: MaskedCard) {
+    pub fn receive_card(&mut self, card: MaskedCard) {
         self.cards.push(card);
         self.opened_cards.push(None);
     }
@@ -352,10 +352,10 @@ fn main() -> anyhow::Result<()> {
     // CARDS ARE SHUFFLED. ROUND OF THE GAME CAN BEGIN
     let deck = final_shuffled_deck;
 
-    andrija.recieve_card(deck[0]);
-    kobi.recieve_card(deck[1]);
-    nico.recieve_card(deck[2]);
-    tom.recieve_card(deck[3]);
+    andrija.receive_card(deck[0]);
+    kobi.receive_card(deck[1]);
+    nico.receive_card(deck[2]);
+    tom.receive_card(deck[3]);
 
     let andrija_rt_1 = andrija.compute_reveal_token(rng, &parameters, &deck[1])?;
     let andrija_rt_2 = andrija.compute_reveal_token(rng, &parameters, &deck[2])?;
