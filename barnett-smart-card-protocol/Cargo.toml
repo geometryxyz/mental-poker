@@ -15,9 +15,9 @@ ark-serialize = "0.3.0"
 ark-std = { version = "0.3.0", features = ["std"] }
 blake2 = { version = "0.9", default-features = false }
 merlin = "3.0.0"
-proof-essentials = { git = "ssh://git@github.com/geometryresearch/proof-toolbox.git" }
+proof-essentials = { git = "https://git@github.com/geometryresearch/proof-toolbox.git" }
 rand = "0.8.4"
-starknet-curve = { git = "ssh://git@github.com/geometryresearch/proof-toolbox.git" }
+starknet-curve = { git = "https://git@github.com/geometryresearch/proof-toolbox.git" }
 thiserror = "1.0.30"
 
 [dev-dependencies]

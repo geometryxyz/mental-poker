@@ -2,11 +2,15 @@ use super::BarnettSmartProtocol;
 use super::{Mask, Remask, Reveal};
 
 use crate::error::CardProtocolError;
+use ark_serialize::Read;
+use ark_serialize::Write;
+use ark_serialize::SerializationError;
 
 use anyhow::Result;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{to_bytes, One, PrimeField, ToBytes};
 use ark_marlin::rng::FiatShamirRng;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::Rng;
 use ark_std::Zero;
 use blake2::Blake2s;
@@ -34,6 +38,7 @@ pub struct DLCards<'a, C: ProjectiveCurve> {
     _group: &'a PhantomData<C>,
 }
 
+#[derive(CanonicalDeserialize, CanonicalSerialize)]
 pub struct Parameters<C: ProjectiveCurve> {
     m: usize,
     n: usize,

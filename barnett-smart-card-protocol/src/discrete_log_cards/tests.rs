@@ -11,6 +11,7 @@ mod test {
     use proof_essentials::utils::rand::sample_vector;
     use rand::thread_rng;
     use std::iter::Iterator;
+    use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
     // Choose elliptic curve setting
     type Curve = starknet_curve::Projective;
@@ -56,8 +57,12 @@ mod test {
         let (pk, sk) = CardProtocol::player_keygen(rng, &parameters).unwrap();
         let player_name = b"Alice";
 
-        let p1_keyproof =
+        let mut p1_keyproof =
             CardProtocol::prove_key_ownership(rng, &parameters, &pk, &sk, &player_name).unwrap();
+
+        let mut data = Vec::with_capacity(p1_keyproof.serialized_size());
+        p1_keyproof.serialize(&mut data).unwrap();
+        p1_keyproof = CanonicalDeserialize::deserialize(data.as_slice()).unwrap();
 
         assert_eq!(
             Ok(()),
