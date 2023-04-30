@@ -25,6 +25,8 @@ mod test {
     use crate::BarnettSmartProtocol;
 
     use ark_ff::UniformRand;
+    use ark_serialize::CanonicalDeserialize;
+    use ark_serialize::CanonicalSerialize;
     use proof_essentials::error::CryptoError;
     use proof_essentials::zkp::proofs::chaum_pedersen_dl_equality;
     use rand::thread_rng;
@@ -52,9 +54,13 @@ mod test {
 
         let some_masked_card = MaskedCard::rand(rng);
 
-        let (reveal_token, reveal_proof): (RevealToken, RevealProof) =
+        let (reveal_token, mut reveal_proof): (RevealToken, RevealProof) =
             CardProtocol::compute_reveal_token(rng, &parameters, &sk, &pk, &some_masked_card)
                 .unwrap();
+
+        let mut data = Vec::with_capacity(reveal_proof.serialized_size());
+        reveal_proof.serialize(&mut data).unwrap();
+        reveal_proof = CanonicalDeserialize::deserialize(data.as_slice()).unwrap();
 
         assert_eq!(
             Ok(()),
