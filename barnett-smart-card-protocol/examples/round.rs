@@ -127,7 +127,7 @@ impl std::fmt::Debug for ClassicPlayingCard {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Player {
     name: Vec<u8>,
     sk: SecretKey,

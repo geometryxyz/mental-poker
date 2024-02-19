@@ -1,5 +1,6 @@
 [workspace]
-
+resolver = "2"
 members = [
-    "barnett-smart-card-protocol"
+  "barnett-smart-card-protocol",
+  "card-protocol-wasm",
 ]
