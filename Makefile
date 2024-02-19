@@ -1,4 +1,6 @@
-debug ?=
+# cargo_cmd := cargo remote -r dev --
+cargo_cmd := cargo
+debug ?= debug
 
 $(info debug is $(debug))
 
@@ -12,14 +14,16 @@ else
 	extension :=
 endif
 
+fmt:
+	$(cargo_cmd) fmt
+
 build:
-	cargo build $(release)
+	$(cargo_cmd) build $(release)
 
 wasm-build:
 	pushd card-protocol-wasm && wasm-pack build $(release)
 
 build-all: build wasm-build
-
 
 help:
 	@echo "usage: make $(prog) [debug=1]"
