@@ -33,7 +33,7 @@ mod test {
     type Curve = starknet_curve::Projective;
 
     // Instantiate concrete type for our card protocol
-    type CardProtocol<'a> = discrete_log_cards::DLCards<'a, Curve>;
+    type CardProtocol = discrete_log_cards::DLCards<Curve>;
 
     type MaskedCard = discrete_log_cards::MaskedCard<Curve>;
     type RevealToken = discrete_log_cards::RevealToken<Curve>;

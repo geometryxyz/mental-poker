@@ -17,7 +17,7 @@ mod test {
     type Scalar = starknet_curve::Fr;
 
     // Instantiate concrete type for our card protocol
-    type CardProtocol<'a> = discrete_log_cards::DLCards<'a, Curve>;
+    type CardProtocol = discrete_log_cards::DLCards<Curve>;
     type CardParameters = discrete_log_cards::Parameters<Curve>;
     type PublicKey = discrete_log_cards::PublicKey<Curve>;
     type SecretKey = discrete_log_cards::PlayerSecretKey<Curve>;
