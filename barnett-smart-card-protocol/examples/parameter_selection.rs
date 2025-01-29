@@ -26,7 +26,7 @@ type Curve = ark_bls12_377::G1Projective;
 type Scalar = ark_bls12_377::Fr;
 
 // Instantiate concrete type for our card protocol
-type CardProtocol<'a> = discrete_log_cards::DLCards<'a, Curve>;
+type CardProtocol = discrete_log_cards::DLCards<Curve>;
 
 const NUMBER_OF_CARDS: usize = 300;
 
